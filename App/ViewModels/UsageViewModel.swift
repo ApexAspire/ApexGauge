@@ -4,8 +4,8 @@ import Foundation
 
 @MainActor
 final class UsageViewModel: ObservableObject {
-    static let useMockDataKey = "UseMockData"
-    static let displayResetCountdownKey = "DisplayResetCountdown"
+    nonisolated static let useMockDataKey = "UseMockData"
+    nonisolated static let displayResetCountdownKey = "DisplayResetCountdown"
 
     @Published private(set) var snapshot: UsageSnapshot?
     @Published private(set) var isRefreshing = false
