@@ -5,6 +5,7 @@ import CoreImage
 import AppKit
 
 private let payloadType = "apexgauge-connect"
+private let maximumClaudePayloadBytes = 2_500
 private let deletionNotice = "QR deleted. The token grants API access until revoked — regenerate provider credentials if the image leaked."
 
 private enum ScriptError: LocalizedError {
@@ -22,18 +23,30 @@ private struct ConnectPayload: Codable {
     let provider: String
     let refreshToken: String
     let accountID: String?
+    let accessToken: String?
+    let accessTokenExpiresAtMs: Int?
 
-    init(provider: String, refreshToken: String, accountID: String? = nil) {
+    init(
+        provider: String,
+        refreshToken: String,
+        accountID: String? = nil,
+        accessToken: String? = nil,
+        accessTokenExpiresAtMs: Int? = nil
+    ) {
         self.type = payloadType
         self.provider = provider
         self.refreshToken = refreshToken
         self.accountID = accountID
+        self.accessToken = accessToken
+        self.accessTokenExpiresAtMs = accessTokenExpiresAtMs
     }
 }
 
 private struct ClaudeCredentialFile: Decodable {
     struct OAuth: Decodable {
         let refreshToken: String
+        let accessToken: String?
+        let expiresAt: Int?
     }
 
     let claudeAiOauth: OAuth
@@ -100,7 +113,7 @@ private func encode(_ payload: ConnectPayload) throws -> (data: Data, string: St
     return (data, string)
 }
 
-private func claudePayload() throws -> ConnectPayload {
+private func claudePayload() throws -> (payload: ConnectPayload, omittedAccessToken: Bool) {
     let credentialsURL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".claude/.credentials.json", isDirectory: false)
 
@@ -120,7 +133,21 @@ private func claudePayload() throws -> ConnectPayload {
     guard !credentials.claudeAiOauth.refreshToken.isEmpty else {
         throw ScriptError.message("Claude refresh token is empty.")
     }
-    return ConnectPayload(provider: "claude", refreshToken: credentials.claudeAiOauth.refreshToken)
+    let accessToken = credentials.claudeAiOauth.accessToken.flatMap { $0.isEmpty ? nil : $0 }
+    let payload = ConnectPayload(
+        provider: "claude",
+        refreshToken: credentials.claudeAiOauth.refreshToken,
+        accessToken: accessToken,
+        accessTokenExpiresAtMs: credentials.claudeAiOauth.expiresAt)
+    if accessToken != nil, try encode(payload).data.count > maximumClaudePayloadBytes {
+        return (
+            ConnectPayload(
+                provider: "claude",
+                refreshToken: credentials.claudeAiOauth.refreshToken,
+                accessTokenExpiresAtMs: credentials.claudeAiOauth.expiresAt),
+            true)
+    }
+    return (payload, false)
 }
 
 private func claudeCredentialsFromKeychain() throws -> Data {
@@ -247,9 +274,10 @@ private func decodeQRCode(at url: URL) throws -> String {
 
 private func runSelfTest() throws {
     let payload = ConnectPayload(
-        provider: "codex",
+        provider: "claude",
         refreshToken: "selftest-refresh-token",
-        accountID: "selftest-account-id")
+        accessToken: "selftest-access-token",
+        accessTokenExpiresAtMs: 1_890_000_000_000)
     let encoded = try encode(payload)
     let temporaryQR = try renderQRCode(encoded.string)
 
@@ -258,11 +286,14 @@ private func runSelfTest() throws {
         guard decoded == encoded.string,
               let decodedData = decoded.data(using: .utf8),
               let object = try JSONSerialization.jsonObject(with: decodedData) as? [String: Any],
-              Set(object.keys) == Set(["type", "provider", "refreshToken", "accountID"]),
+              Set(object.keys) == Set([
+                  "type", "provider", "refreshToken", "accessToken", "accessTokenExpiresAtMs",
+              ]),
               object["type"] as? String == payloadType,
-              object["provider"] as? String == "codex",
+              object["provider"] as? String == "claude",
               object["refreshToken"] as? String == "selftest-refresh-token",
-              object["accountID"] as? String == "selftest-account-id"
+              object["accessToken"] as? String == "selftest-access-token",
+              object["accessTokenExpiresAtMs"] as? Int == 1_890_000_000_000
         else {
             throw ScriptError.message("Self-test payload did not round-trip with the exact connect keys.")
         }
@@ -294,9 +325,15 @@ private func installSignalCleanup(for temporaryQR: TemporaryQR) -> [DispatchSour
 
 private func runProvider(_ provider: String) throws {
     let payload: ConnectPayload
+    let omittedClaudeAccessToken: Bool
     switch provider {
-    case "claude": payload = try claudePayload()
-    case "codex": payload = try codexPayload()
+    case "claude":
+        let result = try claudePayload()
+        payload = result.payload
+        omittedClaudeAccessToken = result.omittedAccessToken
+    case "codex":
+        payload = try codexPayload()
+        omittedClaudeAccessToken = false
     default: throw ScriptError.message("Unsupported provider.")
     }
 
@@ -306,6 +343,9 @@ private func runProvider(_ provider: String) throws {
 
     print("Provider: \(provider)")
     print("Payload bytes: \(encoded.data.count)")
+    if omittedClaudeAccessToken {
+        print("Claude access token omitted: payload would exceed \(maximumClaudePayloadBytes) bytes.")
+    }
     print("PNG path: \(temporaryQR.pngURL.path)")
 
     guard NSWorkspace.shared.open(temporaryQR.pngURL) else {

@@ -26,6 +26,58 @@ final class CodexUsageFetcherTests: XCTestCase {
         XCTAssertEqual(request.value(forHTTPHeaderField: "ChatGPT-Account-Id"), "account-123")
     }
 
+    func testWeeklyOnlyPlanMapsPrimaryWindowAsWeeklyWithoutSession() async throws {
+        let snapshot = try await self.fetchSnapshot(json: #"""
+        {
+          "rate_limit": {
+            "primary_window": {
+              "used_percent": 30,
+              "reset_at": 1800600000,
+              "limit_window_seconds": 604800
+            }
+          }
+        }
+        """#)
+
+        XCTAssertEqual(snapshot.windows.map(\.kind), [.weekly])
+        XCTAssertFalse(snapshot.windows.contains { $0.kind == .session })
+        XCTAssertEqual(snapshot.windows.map(\.remainingPercent), [70])
+    }
+
+    func testWindowDurationsClassifyIndependently() async throws {
+        let snapshot = try await self.fetchSnapshot(json: Self.usageJSON)
+
+        XCTAssertEqual(snapshot.windows.map(\.kind), [.session, .weekly])
+    }
+
+    func testUnknownWindowDurationMapsToOther() async throws {
+        let snapshot = try await self.fetchSnapshot(json: #"""
+        {
+          "rate_limit": {
+            "primary_window": {
+              "used_percent": 10,
+              "limit_window_seconds": 86400
+            }
+          }
+        }
+        """#)
+
+        XCTAssertEqual(snapshot.windows.map(\.kind), [.other])
+    }
+
+    func testMissingWindowDurationsUseLegacySlotFallback() async throws {
+        let snapshot = try await self.fetchSnapshot(json: #"""
+        {
+          "rate_limit": {
+            "primary_window": {"used_percent": 10},
+            "secondary_window": {"used_percent": 20}
+          }
+        }
+        """#)
+
+        XCTAssertEqual(snapshot.windows.map(\.kind), [.session, .weekly])
+    }
+
     func test401MapsToUnauthorized() async throws {
         let error = await self.fetchError(status: 401)
         XCTAssertEqual(error, .unauthorized)
@@ -80,6 +132,18 @@ final class CodexUsageFetcherTests: XCTestCase {
         } catch {
             return nil
         }
+    }
+
+    private func fetchSnapshot(json: String) async throws -> ProviderSnapshot {
+        let client = StubHTTPClient([.init(json: json)])
+        let store = MockCredentialStore(codex: CodexCredentials(
+            accessToken: "codex-access",
+            refreshToken: "codex-refresh",
+            accountID: nil))
+        return try await CodexUsageFetcher(
+            store: store,
+            httpClient: client,
+            now: { Self.now }).fetchUsage()
     }
 
     private static let usageJSON = #"""

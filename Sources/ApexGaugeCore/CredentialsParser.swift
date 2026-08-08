@@ -105,9 +105,9 @@ public enum CredentialsParser {
 // MARK: - QR connect payload
 //
 // The Mac script (Scripts/qr-connect.swift) renders this as a QR code; the app
-// scans it. Deliberately minimal: only the refresh token (+ Codex account id)
-// crosses the optical channel — the phone mints its own access token at first
-// refresh, so the (larger, shorter-lived) access token never leaves the Mac.
+// scans it. Claude payloads may also carry the current access token so a scan
+// remains usable when refresh-token rotation has invalidated the Mac's copy.
+// Codex remains refresh-token-only because its JWT is too large for the QR.
 
 public struct ConnectPayload: Codable, Sendable, Equatable {
     public static let payloadType = "apexgauge-connect"
@@ -116,12 +116,22 @@ public struct ConnectPayload: Codable, Sendable, Equatable {
     public var provider: String
     public var refreshToken: String
     public var accountID: String?
+    public var accessToken: String?
+    public var accessTokenExpiresAtMs: Int?
 
-    public init(provider: ProviderSnapshot.Provider, refreshToken: String, accountID: String? = nil) {
+    public init(
+        provider: ProviderSnapshot.Provider,
+        refreshToken: String,
+        accountID: String? = nil,
+        accessToken: String? = nil,
+        accessTokenExpiresAtMs: Int? = nil
+    ) {
         self.type = Self.payloadType
         self.provider = provider.rawValue
         self.refreshToken = refreshToken
         self.accountID = accountID
+        self.accessToken = accessToken
+        self.accessTokenExpiresAtMs = accessTokenExpiresAtMs
     }
 
     public func encoded() throws -> String {
@@ -140,7 +150,12 @@ public struct ConnectPayload: Codable, Sendable, Equatable {
 
     public var claudeCredentials: ClaudeCredentials? {
         guard provider == ProviderSnapshot.Provider.claude.rawValue else { return nil }
-        return ClaudeCredentials(accessToken: "", refreshToken: refreshToken)
+        return ClaudeCredentials(
+            accessToken: accessToken ?? "",
+            refreshToken: refreshToken,
+            expiresAt: accessTokenExpiresAtMs.map {
+                Date(timeIntervalSince1970: TimeInterval($0) / 1_000)
+            })
     }
 
     public var codexCredentials: CodexCredentials? {

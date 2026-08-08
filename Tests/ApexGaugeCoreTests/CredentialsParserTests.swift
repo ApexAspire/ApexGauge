@@ -84,4 +84,18 @@ final class CredentialsParserTests: XCTestCase {
         XCTAssertEqual(payload.claudeCredentials?.refreshToken, "ref-456")
         XCTAssertNil(payload.codexCredentials)
     }
+
+    func testConnectPayloadClaudeCarriesAccessTokenAndExpiry() throws {
+        let payload = ConnectPayload(
+            provider: .claude,
+            refreshToken: "ref-456",
+            accessToken: "acc-123",
+            accessTokenExpiresAtMs: 1_890_000_000_000)
+
+        let credentials = try XCTUnwrap(ConnectPayload.decode(payload.encoded())?.claudeCredentials)
+
+        XCTAssertEqual(credentials.accessToken, "acc-123")
+        XCTAssertEqual(credentials.refreshToken, "ref-456")
+        XCTAssertEqual(credentials.expiresAt, Date(timeIntervalSince1970: 1_890_000_000))
+    }
 }

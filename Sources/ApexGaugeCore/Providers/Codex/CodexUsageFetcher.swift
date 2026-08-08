@@ -111,11 +111,15 @@ private extension CodexUsageFetcher {
 
         var quotaWindows: [QuotaWindow] {
             var result: [QuotaWindow] = []
+            let useLegacySlotKinds = self.rateLimit?.primaryWindow?.limitWindowSeconds == nil
+                && self.rateLimit?.secondaryWindow?.limitWindowSeconds == nil
             if let primary = self.rateLimit?.primaryWindow {
-                result.append(primary.quotaWindow(kind: .session))
+                let kind: QuotaWindow.Kind = useLegacySlotKinds ? .session : primary.kind
+                result.append(primary.quotaWindow(kind: kind))
             }
             if let secondary = self.rateLimit?.secondaryWindow {
-                result.append(secondary.quotaWindow(kind: .weekly))
+                let kind: QuotaWindow.Kind = useLegacySlotKinds ? .weekly : secondary.kind
+                result.append(secondary.quotaWindow(kind: kind))
             }
             return result
         }
@@ -134,10 +138,23 @@ private extension CodexUsageFetcher {
     struct Window: Decodable {
         let usedPercent: Double
         let resetAt: TimeInterval?
+        let limitWindowSeconds: Int?
 
         enum CodingKeys: String, CodingKey {
             case usedPercent = "used_percent"
             case resetAt = "reset_at"
+            case limitWindowSeconds = "limit_window_seconds"
+        }
+
+        var kind: QuotaWindow.Kind {
+            guard let limitWindowSeconds else { return .other }
+            if (18_000 - 600)...(18_000 + 600) ~= limitWindowSeconds {
+                return .session
+            }
+            if (604_800 - 3_600)...(604_800 + 3_600) ~= limitWindowSeconds {
+                return .weekly
+            }
+            return .other
         }
 
         func quotaWindow(kind: QuotaWindow.Kind) -> QuotaWindow {
