@@ -61,24 +61,26 @@ public struct UsageSnapshot: Codable, Sendable, Equatable {
 
 /// Shared constants (coordinator-owned). The App Group ties the iOS app, watch
 /// app, and complication extension together; all targets must use these values.
+/// NOTE: bundle IDs live in the com.apexaspire.* namespace — the original
+/// com.apex.apexgauge.* IDs collided with another team's App ID registration.
 public enum ApexGaugeDefaults {
-    public static let appGroupID = "group.com.apex.apexgauge"
+    public static let appGroupID = "group.com.apexaspire.apexgauge"
     public static let snapshotFilename = "usage-snapshot.json"
-    public static let appBundleID = "com.apex.apexgauge"
-    public static let watchBundleID = "com.apex.apexgauge.watchkitapp"
+    public static let appBundleID = "com.apexaspire.apexgauge"
+    public static let watchBundleID = "com.apexaspire.apexgauge.watch"
 
     /// WatchConnectivity payload key carrying the UsageSnapshot JSON `Data`.
     public static let watchSnapshotPayloadKey = "snapshot"
 
     /// BGAppRefreshTask identifier (must match BGTaskSchedulerPermittedIdentifiers).
-    public static let backgroundRefreshTaskIdentifier = "com.apex.apexgauge.refresh"
+    public static let backgroundRefreshTaskIdentifier = "com.apexaspire.apexgauge.refresh"
 
     /// Minimum spacing between background refreshes (watchOS/iOS budgets).
     public static let backgroundRefreshInterval: TimeInterval = 15 * 60
 
     /// WidgetKit complication identifiers (Phase 3).
     public static let complicationKind = "ApexGaugeComplication"
-    public static let complicationBundleID = "com.apex.apexgauge.watchkitapp.complication"
+    public static let complicationBundleID = "com.apexaspire.apexgauge.watch.complication"
 
     /// Snapshots older than this render dimmed with an "as of" timestamp.
     public static let staleAfter: TimeInterval = 45 * 60
