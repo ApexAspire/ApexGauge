@@ -69,3 +69,5 @@ License: [MIT](LICENSE). The licence covers the code only — the "Apex Gauge" n
 ## Support
 
 Best-effort support is available through [GitHub Issues](https://github.com/ApexAspire/ApexGauge/issues). There is no response-time or resolution SLA.
+
+For private enquiries, email [admin@apexaspire.co.uk](mailto:admin@apexaspire.co.uk).

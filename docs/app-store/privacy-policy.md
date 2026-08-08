@@ -1,7 +1,7 @@
 # Apex Gauge — Privacy Policy
 
 **Effective date: 8 August 2026**
-**Publisher: Apex Aspire Limited** ([TODO: registered office address])
+**Publisher: Apex Aspire Limited**
 
 ## Summary
 
@@ -44,9 +44,10 @@ Snapshots are removed with the app.
 
 ## Changes
 
-Any change to this policy will be published at [TODO: privacy URL] before it
-takes effect.
+Any change to this policy will be published at the
+[Apex Gauge Privacy Policy](https://apexaspire.github.io/ApexGauge/app-store/privacy-policy)
+before it takes effect.
 
 ## Contact
 
-[TODO: privacy contact email — e.g. privacy@apexaspire.co.uk]
+admin@apexaspire.co.uk

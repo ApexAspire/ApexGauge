@@ -6,9 +6,9 @@ Security updates are provided for the latest released version of Apex Gauge.
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities privately to **security@apexaspire.co.uk**.
+Please report suspected vulnerabilities privately to **admin@apexaspire.co.uk**.
 
-**TODO — the owner must confirm this security contact email before publication.** Do not disclose a suspected vulnerability in a public GitHub issue. Include the affected version, the provider involved, steps to reproduce and the likely impact where known.
+Do not disclose a suspected vulnerability in a public GitHub issue. Include the affected version, the provider involved, steps to reproduce and the likely impact where known.
 
 ## Threat model
 

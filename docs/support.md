@@ -2,6 +2,8 @@
 
 Support is provided on a best-effort basis through [GitHub Issues](https://github.com/ApexAspire/ApexGauge/issues). There is no response-time or resolution SLA.
 
+For private enquiries, email [admin@apexaspire.co.uk](mailto:admin@apexaspire.co.uk).
+
 ## Reporting a bug
 
 Before opening an issue, check the [service status](https://apexaspire.github.io/ApexGauge/status.json). Include:

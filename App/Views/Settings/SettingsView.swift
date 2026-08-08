@@ -113,6 +113,21 @@ struct SettingsView: View {
                 }
             }
             .apexListRow()
+
+            Section("About") {
+                if let privacyPolicyURL = URL(
+                    string: "https://apexaspire.github.io/ApexGauge/app-store/privacy-policy"
+                ) {
+                    Link("Privacy Policy", destination: privacyPolicyURL)
+                }
+
+                if let supportURL = URL(
+                    string: "https://apexaspire.github.io/ApexGauge/support"
+                ) {
+                    Link("Support", destination: supportURL)
+                }
+            }
+            .apexListRow()
         }
         .font(ApexTheme.Typography.body)
         .apexFormStyle()

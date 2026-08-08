@@ -29,7 +29,7 @@ Scope and limitations:
 - `docs/plan.md:9` exposes the local short username and source path `/Users/petersmini/Projects/CodexBar`.
 - Every reachable commit records `Scott Peters <scott@apexaspire.co.uk>` as author identity. This is public if the full history is pushed. The dangling commits contain the same identity but are not pushed by a normal branch push.
 - `ApexGauge.xcodeproj/project.pbxproj:466,500,534,568,600,633` contains Apple Team ID `57CS87GDZL`. A Team ID is a low-sensitivity signing identifier, not a credential, and is observable from signed products; retain it only if publisher correlation is intentional.
-- `docs/app-store/privacy-policy.md:52` contains the example role address `privacy@apexaspire.co.uk`; verify the address exists before publication. `git@github.com` in `docs/app-store/submission-guide.md:20` is an SSH transport URI, not an email address.
+- `docs/app-store/privacy-policy.md` publishes `admin@apexaspire.co.uk`, the operator-selected privacy contact.
 - Visual inspection of all three tracked App Store screenshots found only synthetic quota data and status-bar times—no names, account IDs, device names, emails, notifications, UDIDs, or credentials. PNG string/metadata scans found no personal path or email.
 - The worktree's untracked Git administrative file contains a local `/Users/petersmini/...` path, as expected for a linked worktree. Git does not track or publish that file.
 
