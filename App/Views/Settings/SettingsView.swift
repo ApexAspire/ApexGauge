@@ -58,7 +58,7 @@ struct SettingsView: View {
             Section("Complication") {
                 ForEach(ProviderSnapshot.Provider.allCases, id: \.self) { provider in
                     let isShown = !viewModel.complicationHiddenProviders.contains(provider)
-                    VStack(alignment: .leading, spacing: ApexTheme.Spacing.xSmall) {
+                    HStack(spacing: ApexTheme.Spacing.small) {
                         Toggle(
                             isOn: Binding(
                                 get: { isShown },
@@ -88,7 +88,9 @@ struct SettingsView: View {
                                     Text(choice.displayName).tag(choice)
                                 }
                             }
-                            .font(ApexTheme.Typography.caption)
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .fixedSize()
                         }
                     }
                 }

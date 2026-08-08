@@ -153,21 +153,21 @@ private struct MiniGauge: View {
     var body: some View {
         HStack(spacing: 2) {
             Text("\(Int(displayedPercent.rounded()))")
-                .font(.system(size: 9, weight: .semibold, design: .rounded))
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .frame(width: 20, alignment: .trailing)
+                .frame(width: 24, alignment: .trailing)
 
             ComplicationGaugeBar(value: displayedPercent, tint: barColor)
                 .frame(maxWidth: .infinity)
 
             if let resetsAt = window.resetsAt {
                 Text(compactReset(until: resetsAt))
-                    .font(.system(size: 7, weight: .medium, design: .rounded))
+                    .font(.system(size: 9, weight: .medium, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                    .frame(width: 24, alignment: .trailing)
+                    .frame(width: 30, alignment: .trailing)
             }
         }
         .frame(maxWidth: .infinity)
