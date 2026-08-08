@@ -1,0 +1,24 @@
+NOTICE
+
+Apex Gauge
+Copyright (c) 2026 Apex Aspire Limited
+
+The source code of this project is licensed under the MIT License (see LICENSE).
+
+The MIT License applies to the code only. It does NOT grant any right to use:
+
+- the name "Apex Gauge", "ApexGauge", or "Apex" product branding;
+- the Apex Gauge app icon and logo artwork (including the files under
+  Design/ and the app-icon images in the asset catalogs);
+- the Apex Aspire family trade dress or brand identity.
+
+Those names, marks, and artwork are the property of Apex Aspire Limited and
+may not be used to brand, market, or distribute derivative or re-published
+versions of this software, including on the Apple App Store, without prior
+written permission. If you build and distribute your own version from this
+source, you must use your own name and icon.
+
+The Claude, Codex, and Kimi provider icons (Shared/Assets.xcassets, vendored
+from the MIT-licensed CodexBar project) remain the trademarks of their
+respective owners (Anthropic, OpenAI, Moonshot AI) and are used here
+nominatively, without affiliation or endorsement.
