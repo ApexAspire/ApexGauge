@@ -2,6 +2,8 @@
 
 AI usage quotas on your wrist — an Apple Watch complication (plus iPhone companion app) showing remaining Claude, Codex, and Kimi quota at a glance.
 
+**Status:** The app polls [status.json](https://apexaspire.github.io/ApexGauge/status.json) for endpoint-breakage notices.
+
 One full-width rectangular complication, three rows:
 
 ```
@@ -62,4 +64,8 @@ The secret payload contains only the refresh token; Codex may also include its n
 
 Repo/product: **ApexGauge**. Naming survey (2026-08-08): `QuotaWatch` (Jira app), `TokenWatch` (multiple), `ApexPulse` (Salesforce Labs + battery monitor; also internal Pulse project) are taken; `ApexMonitor` collides with a monitor-backlight hardware product. `ApexGauge` is unclaimed, on-brand with the Apex family, and describes the UI (gauge rows). Note: [LimitWatch](https://limitwatch.app/) is an existing iPhone-widget AI-usage tracker — a direct adjacent product to be aware of if this is publicly released.
 
-License: [MIT](LICENSE) (covers the code only — the "Apex Gauge" name and icon are not licensed for reuse).
+License: [MIT](LICENSE). The licence covers the code only — the "Apex Gauge" name and icon are not licensed for reuse.
+
+## Support
+
+Best-effort support is available through [GitHub Issues](https://github.com/ApexAspire/ApexGauge/issues). There is no response-time or resolution SLA.
