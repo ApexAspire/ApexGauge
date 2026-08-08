@@ -17,3 +17,6 @@ auth.json
 
 # xcodebuild local output
 build/
+
+# Distribution artifacts
+dist/

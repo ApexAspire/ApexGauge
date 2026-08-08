@@ -31,6 +31,26 @@ Pre-implementation. Feasibility investigation complete; build plan approved: [`d
 - Xcode on a Mac, an iPhone paired to an Apple Watch (watchOS 11+ for the 3-row `AccessoryWidgetGroup`)
 - No App Store submission needed for personal use
 
+## Connecting providers (Mac → iPhone)
+
+To connect Claude or Codex, run the QR helper on the Mac that already has the provider signed in. Replace `codex` with `claude` when connecting Claude.
+
+1. **Cloned repo:**
+
+   ```sh
+   swift Scripts/qr-connect.swift codex
+   ```
+
+2. **No clone, with developer tools:** download the source first so you can inspect it before running it.
+
+   ```sh
+   curl -fsSL https://raw.githubusercontent.com/ApexAspire/ApexGauge/main/Scripts/qr-connect.swift -o /tmp/qr-connect.swift && swift /tmp/qr-connect.swift codex
+   ```
+
+3. **No developer tools:** download the signed universal `qr-connect` binary from [GitHub Releases](https://github.com/ApexAspire/ApexGauge/releases). Release binaries are built with [`Scripts/build-qr-connect.sh`](Scripts/build-qr-connect.sh).
+
+The secret payload contains only the refresh token; Codex may also include its non-secret account ID. The QR deletes itself after scanning, and the credentials stay in this-device-only Keychain storage on the iPhone.
+
 ## Repo layout
 
 - `docs/plan.md` — approved build plan (phases, risks, validation)

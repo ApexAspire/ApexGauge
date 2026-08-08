@@ -86,6 +86,7 @@ struct QRScannerView: UIViewControllerRepresentable {
 struct QRConnectSection: View {
     let providerName: String
     let command: String
+    let clonedRepoCommand: String
     let onPayload: @MainActor (ConnectPayload) -> Void
 
     @Environment(\.openURL) private var openURL
@@ -95,13 +96,20 @@ struct QRConnectSection: View {
 
     var body: some View {
         Section("Scan QR (recommended)") {
-            Text("On your Mac run:")
-            Text(command)
-                .font(.system(.footnote, design: .monospaced))
-                .textSelection(.enabled)
-            Text("Then scan the code it opens.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            ScrollView(.horizontal, showsIndicators: true) {
+                Text(command)
+                    .font(.system(.footnote, design: .monospaced))
+                    .fixedSize(horizontal: true, vertical: false)
+                    .textSelection(.enabled)
+                    .accessibilityLabel(command)
+            }
+            ScrollView(.horizontal, showsIndicators: true) {
+                Text("If you have the repo cloned: \(clonedRepoCommand)")
+                    .font(.footnote)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
 
             Button {
                 Task { await openScanner() }

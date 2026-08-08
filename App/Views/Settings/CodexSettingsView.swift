@@ -14,7 +14,8 @@ struct CodexSettingsView: View {
         Form {
             QRConnectSection(
                 providerName: "Codex",
-                command: "swift ~/Projects/ApexGauge/Scripts/qr-connect.swift codex",
+                command: "curl -fsSL https://raw.githubusercontent.com/ApexAspire/ApexGauge/main/Scripts/qr-connect.swift -o /tmp/qr-connect.swift && swift /tmp/qr-connect.swift codex",
+                clonedRepoCommand: "swift Scripts/qr-connect.swift codex",
                 onPayload: handleScannedPayload
             )
 
