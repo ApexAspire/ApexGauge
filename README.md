@@ -1,0 +1,45 @@
+# ApexGauge
+
+AI usage quotas on your wrist — an Apple Watch complication (plus iPhone companion app) showing remaining Claude, Codex, and Kimi quota at a glance.
+
+One full-width rectangular complication, three rows:
+
+```
+Claude   S 42%   W 71%   F 18%
+Codex    S 30%   W 55%
+Kimi     W 12%
+```
+
+S = 5-hour session window, W = weekly window, F = Claude's Fable model-scoped weekly window. Values shown are **remaining** quota, refreshed every ~15–30 minutes (watchOS complication budget — real-time is not possible).
+
+## Status
+
+Pre-implementation. Feasibility investigation complete; build plan approved: [`docs/plan.md`](docs/plan.md).
+
+## Architecture
+
+- **iPhone companion app** owns all fetching and OAuth token refresh (single refresh owner — Codex refresh tokens rotate), persists a compact snapshot to the shared App Group, and pushes updates to the watch via WatchConnectivity.
+- **watchOS app + WidgetKit extension** renders the cached snapshot only — no networking on the watch. `accessoryRectangular` (primary, via `AccessoryWidgetGroup`) plus `accessoryCircular` fallbacks.
+- **Data sources** (same endpoints CodexBar uses; fetchers vendored from `CodexBarCore`):
+  - Claude: `GET api.anthropic.com/api/oauth/usage` (OAuth token pasted once from the Mac, phone-owned refresh)
+  - Codex: `GET chatgpt.com/backend-api/wham/usage` (OAuth tokens pasted once from `~/.codex/auth.json`)
+  - Kimi: `GET api.kimi.com/coding/v1/usages` (official user API key from the Kimi Code Console)
+
+## Requirements
+
+- Paid Apple Developer Program membership (free provisioning expires every 7 days — unusable for a complication)
+- Xcode on a Mac, an iPhone paired to an Apple Watch (watchOS 11+ for the 3-row `AccessoryWidgetGroup`)
+- No App Store submission needed for personal use
+
+## Repo layout
+
+- `docs/plan.md` — approved build plan (phases, risks, validation)
+- `Sources/ApexGaugeCore` — shared Swift package: provider fetchers (vendored from CodexBar) + cross-process snapshot model
+- `App/` — iOS companion app (Xcode project, Phase 1)
+- `Watch/` — watchOS app + complication extension (Phase 2–3)
+
+## Name
+
+Repo/product: **ApexGauge**. Naming survey (2026-08-08): `QuotaWatch` (Jira app), `TokenWatch` (multiple), `ApexPulse` (Salesforce Labs + battery monitor; also internal Pulse project) are taken; `ApexMonitor` collides with a monitor-backlight hardware product. `ApexGauge` is unclaimed, on-brand with the Apex family, and describes the UI (gauge rows). Note: [LimitWatch](https://limitwatch.app/) is an existing iPhone-widget AI-usage tracker — a direct adjacent product to be aware of if this is publicly released.
+
+License: TBD before any public release.

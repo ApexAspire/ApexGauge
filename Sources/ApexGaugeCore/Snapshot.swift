@@ -1,0 +1,60 @@
+import Foundation
+
+/// A single quota window (e.g. Claude 5-hour session, Kimi weekly).
+/// Values are 0...100 **remaining** percentages as shown on the complication.
+public struct QuotaWindow: Codable, Sendable, Equatable {
+    public enum Kind: String, Codable, Sendable {
+        case session   // 5-hour window ("S")
+        case weekly    // 7-day window ("W")
+        case fable     // Claude Fable model-scoped weekly window ("F")
+        case other     // provider-specific extras (credits, routines, …)
+    }
+
+    public var kind: Kind
+    public var remainingPercent: Double
+    public var resetsAt: Date?
+
+    public init(kind: Kind, remainingPercent: Double, resetsAt: Date? = nil) {
+        self.kind = kind
+        self.remainingPercent = remainingPercent
+        self.resetsAt = resetsAt
+    }
+}
+
+/// One provider row on the complication.
+public struct ProviderSnapshot: Codable, Sendable, Equatable {
+    public enum Provider: String, Codable, Sendable, CaseIterable {
+        case claude, codex, kimi
+    }
+
+    public var provider: Provider
+    public var windows: [QuotaWindow]
+    /// When the provider last answered successfully — drives the "as of HH:MM"
+    /// stale indicator on the watch face.
+    public var fetchedAt: Date
+    /// Non-nil when the last refresh failed; the complication keeps showing the
+    /// previous values (dimmed) and the iOS app surfaces this message.
+    public var lastError: String?
+
+    public init(provider: Provider, windows: [QuotaWindow], fetchedAt: Date, lastError: String? = nil) {
+        self.provider = provider
+        self.windows = windows
+        self.fetchedAt = fetchedAt
+        self.lastError = lastError
+    }
+}
+
+/// The payload persisted to the App Group by the iPhone app and transferred to
+/// the watch via WatchConnectivity. Codable + versioned so the complication can
+/// evolve without breaking installed watches.
+public struct UsageSnapshot: Codable, Sendable, Equatable {
+    public static let currentVersion = 1
+
+    public var version: Int
+    public var providers: [ProviderSnapshot]
+
+    public init(version: Int = Self.currentVersion, providers: [ProviderSnapshot]) {
+        self.version = version
+        self.providers = providers
+    }
+}
