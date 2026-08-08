@@ -25,6 +25,14 @@ public struct QuotaWindow: Codable, Sendable, Equatable {
 public struct ProviderSnapshot: Codable, Sendable, Equatable {
     public enum Provider: String, Codable, Sendable, CaseIterable {
         case claude, codex, kimi
+
+        public var displayName: String {
+            switch self {
+            case .claude: "Claude"
+            case .codex: "Codex"
+            case .kimi: "Kimi"
+            }
+        }
     }
 
     public var provider: Provider
@@ -96,4 +104,67 @@ public enum ApexGaugeDefaults {
     /// WatchConnectivity message key: the watch sends ["requestSnapshot": true]
     /// when its cached snapshot is stale; the phone refreshes and replies.
     public static let watchSnapshotRequestKey = "requestSnapshot"
+
+    /// WatchConnectivity payload key + UserDefaults key carrying the per-provider
+    /// complication window preferences (JSON of [String: String], provider
+    /// rawValue → ComplicationWindowChoice rawValue).
+    public static let complicationWindowsKey = "ComplicationWindows"
+}
+
+/// Which quota window a provider's complication row shows. `.lowest` (default)
+/// picks the window with the least remaining quota.
+public enum ComplicationWindowChoice: String, Codable, Sendable, CaseIterable {
+    case lowest, session, weekly, fable
+
+    public var displayName: String {
+        switch self {
+        case .lowest: "Lowest"
+        case .session: "Session"
+        case .weekly: "Week"
+        case .fable: "Fable"
+        }
+    }
+}
+
+public extension ProviderSnapshot {
+    /// The window a complication row should render for a user's choice.
+    /// Falls back to the lowest-remaining window when the chosen kind is absent.
+    func window(for choice: ComplicationWindowChoice) -> QuotaWindow? {
+        let kind: QuotaWindow.Kind? = switch choice {
+        case .lowest: nil
+        case .session: .session
+        case .weekly: .weekly
+        case .fable: .fable
+        }
+        if let kind, let match = windows.first(where: { $0.kind == kind }) {
+            return match
+        }
+        return windows.min(by: { $0.remainingPercent < $1.remainingPercent })
+    }
+}
+
+/// Per-provider complication window preferences, persisted as
+/// [provider rawValue: choice rawValue] JSON in UserDefaults.
+public enum ComplicationWindowPreferences {
+    public static func decode(from defaults: UserDefaults?) -> [ProviderSnapshot.Provider: ComplicationWindowChoice] {
+        guard let data = defaults?.data(forKey: ApexGaugeDefaults.complicationWindowsKey),
+              let raw = try? JSONDecoder().decode([String: String].self, from: data)
+        else { return [:] }
+        return raw.reduce(into: [:]) { result, pair in
+            if let provider = ProviderSnapshot.Provider(rawValue: pair.key),
+               let choice = ComplicationWindowChoice(rawValue: pair.value)
+            {
+                result[provider] = choice
+            }
+        }
+    }
+
+    public static func encode(_ prefs: [ProviderSnapshot.Provider: ComplicationWindowChoice]) -> Data? {
+        let raw = prefs.reduce(into: [String: String]()) { $0[$1.key.rawValue] = $1.value.rawValue }
+        return try? JSONEncoder().encode(raw)
+    }
+
+    public static func store(_ prefs: [ProviderSnapshot.Provider: ComplicationWindowChoice], in defaults: UserDefaults?) {
+        defaults?.set(encode(prefs), forKey: ApexGaugeDefaults.complicationWindowsKey)
+    }
 }

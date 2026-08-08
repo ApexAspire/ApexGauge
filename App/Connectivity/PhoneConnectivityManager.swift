@@ -132,6 +132,24 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
         }
     }
 
+    func pushComplicationWindows(_ prefs: [ProviderSnapshot.Provider: ComplicationWindowChoice]) {
+        guard let session, session.activationState == .activated,
+              let data = ComplicationWindowPreferences.encode(prefs)
+        else {
+            lastPushDescription = "WatchConnectivity not activated yet"
+            return
+        }
+
+        do {
+            try session.updateApplicationContext([
+                ApexGaugeDefaults.complicationWindowsKey: data,
+            ])
+            lastPushDescription = "complication preferences sent"
+        } catch {
+            lastPushDescription = "Preference push failed: \(error.localizedDescription)"
+        }
+    }
+
     nonisolated func session(
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,

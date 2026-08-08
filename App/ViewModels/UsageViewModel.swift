@@ -13,6 +13,7 @@ final class UsageViewModel: ObservableObject {
     @Published private(set) var useMockData: Bool
     @Published private(set) var displayPercentUsed: Bool
     @Published private(set) var displayResetCountdown: Bool
+    @Published private(set) var complicationWindows: [ProviderSnapshot.Provider: ComplicationWindowChoice]
     @Published private var refreshingProviderIDs: Set<String> = []
 
     private let mockEngine: any UsageEngineing
@@ -42,6 +43,18 @@ final class UsageViewModel: ObservableObject {
         useMockData = defaults.object(forKey: Self.useMockDataKey) as? Bool ?? true
         displayPercentUsed = defaults.object(forKey: ApexGaugeDefaults.displayPercentUsedKey) as? Bool ?? true
         displayResetCountdown = defaults.object(forKey: Self.displayResetCountdownKey) as? Bool ?? false
+        complicationWindows = ComplicationWindowPreferences.decode(from: defaults)
+    }
+
+    func setComplicationWindow(
+        _ choice: ComplicationWindowChoice,
+        for provider: ProviderSnapshot.Provider
+    ) {
+        var updated = complicationWindows
+        updated[provider] = choice
+        complicationWindows = updated
+        ComplicationWindowPreferences.store(updated, in: defaults)
+        connectivity?.pushComplicationWindows(updated)
     }
 
     func setUseMockData(_ enabled: Bool) {

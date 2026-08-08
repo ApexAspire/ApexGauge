@@ -64,6 +64,18 @@ final class ComplicationSnapshotRequester: NSObject, WCSessionDelegate, @uncheck
     }
 
     private func receivePayload(_ payload: [String: Any]) {
+        if let data = payload[ApexGaugeDefaults.complicationWindowsKey] as? Data {
+            let defaults = UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)
+            defaults?.set(data, forKey: ApexGaugeDefaults.complicationWindowsKey)
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+
+        if let displayPercentUsed = payload[ApexGaugeDefaults.watchDisplayModePayloadKey] as? Bool {
+            let defaults = UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)
+            defaults?.set(displayPercentUsed, forKey: ApexGaugeDefaults.displayPercentUsedKey)
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+
         guard let data = payload[ApexGaugeDefaults.watchSnapshotPayloadKey] as? Data,
               (try? JSONDecoder().decode(UsageSnapshot.self, from: data)) != nil,
               let containerURL = FileManager.default.containerURL(

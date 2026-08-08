@@ -38,77 +38,17 @@ private struct RectangularComplicationView: View {
     var body: some View {
         Group {
             if let snapshot = entry.snapshot, !snapshot.providers.isEmpty {
-#if os(watchOS)
-                AccessoryWidgetGroup {
-                    HStack(spacing: 4) {
-                        Text("ApexGauge")
-                            .fontWeight(.semibold)
-                        Spacer(minLength: 2)
-                        Text(entry.displayPercentUsed ? "used" : "left")
-                            .foregroundStyle(.secondary)
-                        if let oldestFetchedAt = entry.oldestFetchedAt {
-                            Text("as of \(formattedTime(oldestFetchedAt))")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .font(.system(size: 9))
-                } content: {
-                    ProviderQuotaView(
-                        provider: .claude,
-                        snapshot: snapshot.provider(.claude),
-                        displayPercentUsed: entry.displayPercentUsed
-                    )
-                    ProviderQuotaView(
-                        provider: .codex,
-                        snapshot: snapshot.provider(.codex),
-                        displayPercentUsed: entry.displayPercentUsed
-                    )
-                    ProviderQuotaView(
-                        provider: .kimi,
-                        snapshot: snapshot.provider(.kimi),
-                        displayPercentUsed: entry.displayPercentUsed
-                    )
+                VStack(alignment: .leading, spacing: 4) {
+                    ProviderRowView(provider: .claude, snapshot: snapshot.provider(.claude), entry: entry)
+                    ProviderRowView(provider: .codex, snapshot: snapshot.provider(.codex), entry: entry)
+                    ProviderRowView(provider: .kimi, snapshot: snapshot.provider(.kimi), entry: entry)
                 }
-                .accessoryWidgetGroupStyle(.roundedSquare)
-#else
-                VStack(spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text("ApexGauge")
-                            .fontWeight(.semibold)
-                        Spacer(minLength: 2)
-                        Text(entry.displayPercentUsed ? "used" : "left")
-                            .foregroundStyle(.secondary)
-                        if let oldestFetchedAt = entry.oldestFetchedAt {
-                            Text("as of \(formattedTime(oldestFetchedAt))")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .font(.system(size: 9))
-
-                    HStack(spacing: 4) {
-                        ProviderQuotaView(
-                            provider: .claude,
-                            snapshot: snapshot.provider(.claude),
-                            displayPercentUsed: entry.displayPercentUsed
-                        )
-                        ProviderQuotaView(
-                            provider: .codex,
-                            snapshot: snapshot.provider(.codex),
-                            displayPercentUsed: entry.displayPercentUsed
-                        )
-                        ProviderQuotaView(
-                            provider: .kimi,
-                            snapshot: snapshot.provider(.kimi),
-                            displayPercentUsed: entry.displayPercentUsed
-                        )
-                    }
-                }
-#endif
+                .frame(maxHeight: .infinity)
             } else {
                 VStack(spacing: 2) {
                     Image(systemName: "iphone.and.arrow.forward")
                         .font(.title3)
-                    Text("Open ApexGauge")
+                    Text("Open Apex Gauge")
                         .font(.headline)
                     Text("on iPhone")
                         .font(.caption2)
@@ -119,59 +59,89 @@ private struct RectangularComplicationView: View {
         }
         .opacity(entry.isStale ? 0.5 : 1)
     }
-
-    private func formattedTime(_ date: Date) -> String {
-        date.formatted(
-            .dateTime
-                .hour(.twoDigits(amPM: .omitted))
-                .minute(.twoDigits)
-        )
-    }
 }
 
-private struct ProviderQuotaView: View {
+/// One provider row: brand-tinted symbol, % numeral, thin RAG bar, compact
+/// reset countdown. One bar per provider — the user picks which window each
+/// row shows (default: lowest remaining).
+private struct ProviderRowView: View {
     let provider: ProviderSnapshot.Provider
     let snapshot: ProviderSnapshot?
-    let displayPercentUsed: Bool
+    let entry: ComplicationEntry
 
-    private var lowestRemaining: Double {
-        snapshot?.windows.map(\.remainingPercent).min() ?? 0
+    private var window: QuotaWindow? {
+        snapshot?.window(for: entry.windowChoices[provider] ?? .lowest)
     }
 
-    var body: some View {
-        VStack(spacing: 1) {
-            Text(provider.displayName)
-                .font(.system(size: 8, weight: .semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
+    private var displayedPercent: Double {
+        guard let window else { return 0 }
+        return clamped(entry.displayPercentUsed ? 100 - window.remainingPercent : window.remainingPercent)
+    }
 
-            Text(windowReadouts)
-                .font(.system(size: 7, weight: .medium, design: .rounded))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.45)
-
-            Gauge(value: displayedPercent(for: lowestRemaining), in: 0...100) {
-                EmptyView()
-            }
-            .gaugeStyle(.accessoryLinearCapacity)
-            .labelsHidden()
+    private var barColor: Color {
+        switch window?.remainingPercent ?? 0 {
+        case ..<25: .red
+        case ..<50: .orange
+        default: .green
         }
     }
 
-    private var windowReadouts: String {
-        guard let snapshot, !snapshot.windows.isEmpty else { return "—" }
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: provider.symbol)
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(provider.brandTint)
+                .frame(width: 12)
 
-        return snapshot.windows
-            .sorted { $0.kind.sortOrder < $1.kind.sortOrder }
-            .map {
-                "\($0.kind.compactLabel) \(Int(displayedPercent(for: $0.remainingPercent).rounded()))%"
+            Text(window == nil ? "—" : "\(Int(displayedPercent.rounded()))%")
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .frame(width: 30, alignment: .trailing)
+
+            ComplicationGaugeBar(value: displayedPercent, tint: barColor)
+                .frame(maxWidth: .infinity)
+
+            if let resetsAt = window?.resetsAt {
+                Text(compactReset(until: resetsAt))
+                    .font(.system(size: 8, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .fixedSize()
             }
-            .joined(separator: " ")
+        }
     }
 
-    private func displayedPercent(for remainingPercent: Double) -> Double {
-        clamped(displayPercentUsed ? 100 - remainingPercent : remainingPercent)
+    /// Compact countdown with no spaces: "3h12m", "2d4h", "45m".
+    private func compactReset(until date: Date) -> String {
+        let interval = date.timeIntervalSince(entry.date)
+        guard interval > 0 else { return "now" }
+
+        let totalMinutes = max(1, Int(ceil(interval / 60)))
+        let days = totalMinutes / (24 * 60)
+        let hours = (totalMinutes % (24 * 60)) / 60
+        let minutes = totalMinutes % 60
+
+        if days > 0 { return hours > 0 ? "\(days)d\(hours)h" : "\(days)d" }
+        if hours > 0 { return minutes > 0 ? "\(hours)h\(minutes)m" : "\(hours)h" }
+        return "\(minutes)m"
+    }
+}
+
+private struct ComplicationGaugeBar: View {
+    let value: Double
+    let tint: Color
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(.quaternary)
+                Capsule()
+                    .fill(tint)
+                    .frame(width: geometry.size.width * clamped(value) / 100)
+            }
+        }
+        .frame(height: 3.5)
     }
 }
 
@@ -230,30 +200,30 @@ private extension UsageSnapshot {
     }
 }
 
-private extension ProviderSnapshot.Provider {
-    var displayName: String {
+extension ProviderSnapshot.Provider {
+    var initial: String {
+        String(displayName.prefix(1))
+    }
+
+    var symbol: String {
         switch self {
-        case .claude: "Claude"
-        case .codex: "Codex"
-        case .kimi: "Kimi"
+        case .claude: "sparkles"
+        case .codex: "terminal"
+        case .kimi: "moon.stars"
         }
     }
 
-    var initial: String {
-        String(displayName.prefix(1))
+    /// Brand-tinted symbol colour (bars carry the RAG meaning instead).
+    var brandTint: Color {
+        switch self {
+        case .claude: Color(red: 0.85, green: 0.47, blue: 0.34) // Anthropic coral
+        case .codex: .white
+        case .kimi: Color(red: 0.42, green: 0.58, blue: 1.0)
+        }
     }
 }
 
 private extension QuotaWindow.Kind {
-    var compactLabel: String {
-        switch self {
-        case .session: "S"
-        case .weekly: "W"
-        case .fable: "F"
-        case .other: "•"
-        }
-    }
-
     var sortOrder: Int {
         switch self {
         case .session: 0

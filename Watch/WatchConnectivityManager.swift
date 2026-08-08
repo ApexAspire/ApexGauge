@@ -143,6 +143,17 @@ final class SnapshotRequester: NSObject, ObservableObject {
                 self?.receive(displayPercentUsed: displayPercentUsed)
             }
         }
+
+        if let data = payload[ApexGaugeDefaults.complicationWindowsKey] as? Data {
+            Task { @MainActor [weak self] in
+                self?.receive(complicationWindows: data)
+            }
+        }
+    }
+
+    private func receive(complicationWindows data: Data) {
+        sharedDefaults?.set(data, forKey: ApexGaugeDefaults.complicationWindowsKey)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 

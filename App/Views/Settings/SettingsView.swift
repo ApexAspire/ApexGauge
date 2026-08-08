@@ -1,3 +1,4 @@
+import ApexGaugeCore
 import SwiftUI
 
 struct SettingsView: View {
@@ -49,6 +50,27 @@ struct SettingsView: View {
                 LabeledContent("Last push", value: connectivity.lastPushDescription)
 
                 Text("Usage data reaches the watch over WatchConnectivity after each refresh. If the watch shows “waiting for iPhone”, pull to refresh on the dashboard and check this line.")
+                    .font(ApexTheme.Typography.caption)
+                    .foregroundStyle(ApexTheme.Colors.inkSecondary)
+            }
+            .apexListRow()
+
+            Section("Complication") {
+                ForEach(ProviderSnapshot.Provider.allCases, id: \.self) { provider in
+                    Picker(
+                        provider.displayName,
+                        selection: Binding(
+                            get: { viewModel.complicationWindows[provider] ?? .lowest },
+                            set: { viewModel.setComplicationWindow($0, for: provider) }
+                        )
+                    ) {
+                        ForEach(ComplicationWindowChoice.allCases, id: \.self) { choice in
+                            Text(choice.displayName).tag(choice)
+                        }
+                    }
+                }
+
+                Text("The watch complication shows one bar per provider — pick which quota window each bar tracks. “Lowest” follows whichever window is closest to exhaustion; if a provider has no such window, the lowest shows.")
                     .font(ApexTheme.Typography.caption)
                     .foregroundStyle(ApexTheme.Colors.inkSecondary)
             }
