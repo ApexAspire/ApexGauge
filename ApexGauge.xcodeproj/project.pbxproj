@@ -462,6 +462,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/ApexGauge.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				DEVELOPMENT_TEAM = 57CS87GDZL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -495,6 +496,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/ApexGauge.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				DEVELOPMENT_TEAM = 57CS87GDZL;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = App/Info.plist;
@@ -528,6 +530,7 @@
 				CODE_SIGN_ENTITLEMENTS = Watch/ApexGaugeWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				DEVELOPMENT_TEAM = 57CS87GDZL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -561,6 +564,7 @@
 				CODE_SIGN_ENTITLEMENTS = Watch/ApexGaugeWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				DEVELOPMENT_TEAM = 57CS87GDZL;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Apex Gauge";
@@ -592,6 +596,7 @@
 				CODE_SIGN_ENTITLEMENTS = WatchComplication/ApexGaugeComplication.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				DEVELOPMENT_TEAM = 57CS87GDZL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -624,6 +629,7 @@
 				CODE_SIGN_ENTITLEMENTS = WatchComplication/ApexGaugeComplication.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				DEVELOPMENT_TEAM = 57CS87GDZL;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WatchComplication/Info.plist;
