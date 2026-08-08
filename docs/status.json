@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-08T00:00:00Z",
+  "providers": {
+    "claude": { "status": "ok", "message": "" },
+    "codex": { "status": "ok", "message": "" },
+    "kimi": { "status": "ok", "message": "" }
+  }
+}
