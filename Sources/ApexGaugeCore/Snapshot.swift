@@ -80,7 +80,7 @@ public enum ApexGaugeDefaults {
 
     /// WidgetKit complication identifiers (Phase 3).
     public static let complicationKind = "ApexGaugeComplication"
-    public static let complicationBundleID = "com.apexaspire.apexgauge.watch.complication"
+    public static let complicationBundleID = "com.apexaspire.apexgauge.watch.widgets"
 
     /// Snapshots older than this render dimmed with an "as of" timestamp.
     public static let staleAfter: TimeInterval = 45 * 60
