@@ -65,4 +65,14 @@ public enum ApexGaugeDefaults {
     public static let appGroupID = "group.com.apex.apexgauge"
     public static let snapshotFilename = "usage-snapshot.json"
     public static let appBundleID = "com.apex.apexgauge"
+    public static let watchBundleID = "com.apex.apexgauge.watchkitapp"
+
+    /// WatchConnectivity payload key carrying the UsageSnapshot JSON `Data`.
+    public static let watchSnapshotPayloadKey = "snapshot"
+
+    /// BGAppRefreshTask identifier (must match BGTaskSchedulerPermittedIdentifiers).
+    public static let backgroundRefreshTaskIdentifier = "com.apex.apexgauge.refresh"
+
+    /// Minimum spacing between background refreshes (watchOS/iOS budgets).
+    public static let backgroundRefreshInterval: TimeInterval = 15 * 60
 }
