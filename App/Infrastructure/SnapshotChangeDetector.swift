@@ -25,17 +25,19 @@ final class SnapshotChangeDetector {
             .contentModificationDate
     }
 
-    /// Returns true after atomically recording `snapshot` as the snapshot to push.
-    /// Persistence errors are thrown so the refresh flow can surface them.
-    func shouldPush(_ snapshot: UsageSnapshot, now: Date = Date()) throws -> Bool {
+    /// Pure decision: is this snapshot worth a (budgeted) watch push?
+    /// Records nothing — call recordPush only after a confirmed send, so a
+    /// swallowed transfer doesn't suppress retries.
+    func shouldPush(_ snapshot: UsageSnapshot, now: Date = Date()) -> Bool {
         let pushAgeExceeded = lastPushDate.map {
             now.timeIntervalSince($0) > Self.maximumPushAge
         } ?? true
 
-        guard pushAgeExceeded || hasMeaningfulChange(from: lastPushedSnapshot, to: snapshot) else {
-            return false
-        }
+        return pushAgeExceeded || hasMeaningfulChange(from: lastPushedSnapshot, to: snapshot)
+    }
 
+    /// Call only after the snapshot was actually transferred to the watch.
+    func recordPush(_ snapshot: UsageSnapshot, now: Date = Date()) throws {
         guard let fileURL else {
             throw CocoaError(.fileNoSuchFile, userInfo: [
                 NSLocalizedDescriptionKey: "The Apex Gauge App Group container is unavailable.",
@@ -46,7 +48,6 @@ final class SnapshotChangeDetector {
         try data.write(to: fileURL, options: .atomic)
         lastPushedSnapshot = snapshot
         lastPushDate = now
-        return true
     }
 
     private func hasMeaningfulChange(

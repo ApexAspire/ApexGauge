@@ -139,11 +139,13 @@ final class UsageViewModel: ObservableObject {
         snapshot = refreshedSnapshot
 
         // Push live snapshots to the watch when values moved (complication
-        // transfers are budgeted — the detector decides).
+        // transfers are budgeted — the detector decides). Only record the push
+        // after a confirmed send so a failed transfer is retried next refresh.
         if pushToWatch, let connectivity, let changeDetector,
-           (try? changeDetector.shouldPush(refreshedSnapshot)) == true
+           changeDetector.shouldPush(refreshedSnapshot),
+           connectivity.push(refreshedSnapshot)
         {
-            connectivity.push(refreshedSnapshot)
+            try? changeDetector.recordPush(refreshedSnapshot)
         }
     }
 

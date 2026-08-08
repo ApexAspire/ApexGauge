@@ -21,18 +21,20 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
         session.activate()
     }
 
-    func push(_ snapshot: UsageSnapshot) {
+    /// Attempts a transfer and reports whether one was actually queued/sent.
+    /// Only requires an activated session: transfers queue for a paired watch
+    /// even when the watch app was side-installed (devicectl) and
+    /// isWatchAppInstalled reports false — gating on it silently drops data.
+    @discardableResult
+    func push(_ snapshot: UsageSnapshot) -> Bool {
         guard let session else {
             lastPushDescription = "WatchConnectivity not activated"
-            return
+            return false
         }
 
-        guard session.activationState == .activated,
-              session.isPaired,
-              session.isWatchAppInstalled
-        else {
-            lastPushDescription = "Paired watch app unavailable"
-            return
+        guard session.activationState == .activated else {
+            lastPushDescription = "WatchConnectivity not activated yet"
+            return false
         }
 
         let data: Data
@@ -40,21 +42,23 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
             data = try JSONEncoder().encode(snapshot)
         } catch {
             lastPushDescription = "Snapshot encoding failed: \(error.localizedDescription)"
-            return
+            return false
         }
 
         let payload = [ApexGaugeDefaults.watchSnapshotPayloadKey: data]
         if session.remainingComplicationUserInfoTransfers > 0 {
             session.transferCurrentComplicationUserInfo(payload)
             lastPushDescription = "complication push (\(session.remainingComplicationUserInfoTransfers) transfers left)"
-            return
+            return true
         }
 
         do {
             try session.updateApplicationContext(payload)
             lastPushDescription = "application context"
+            return true
         } catch {
             lastPushDescription = "Application context failed: \(error.localizedDescription)"
+            return false
         }
     }
 

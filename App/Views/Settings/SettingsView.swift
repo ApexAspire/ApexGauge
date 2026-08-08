@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var viewModel: UsageViewModel
+    @EnvironmentObject private var connectivity: PhoneConnectivityManager
     let credentialStore: KeychainCredentialStore
 
     var body: some View {
@@ -41,6 +42,15 @@ struct SettingsView: View {
                 )
                 .font(ApexTheme.Typography.caption)
                 .foregroundStyle(ApexTheme.Colors.inkSecondary)
+            }
+            .apexListRow()
+
+            Section("Watch") {
+                LabeledContent("Last push", value: connectivity.lastPushDescription)
+
+                Text("Usage data reaches the watch over WatchConnectivity after each refresh. If the watch shows “waiting for iPhone”, pull to refresh on the dashboard and check this line.")
+                    .font(ApexTheme.Typography.caption)
+                    .foregroundStyle(ApexTheme.Colors.inkSecondary)
             }
             .apexListRow()
 

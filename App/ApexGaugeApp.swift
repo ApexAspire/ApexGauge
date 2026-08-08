@@ -31,8 +31,10 @@ struct ApexGaugeApp: App {
         RefreshScheduler.register {
             let snapshot = await liveEngine.refreshAll()
             try? await snapshotStore.save(snapshot)
-            if (try? changeDetector.shouldPush(snapshot)) == true {
-                await connectivity.push(snapshot)
+            if changeDetector.shouldPush(snapshot),
+               await connectivity.push(snapshot)
+            {
+                try? changeDetector.recordPush(snapshot)
             }
         }
         RefreshScheduler.scheduleNext()
@@ -53,6 +55,7 @@ struct ApexGaugeApp: App {
         WindowGroup {
             RootView(credentialStore: credentialStore)
                 .environmentObject(viewModel)
+                .environmentObject(connectivity)
         }
     }
 }

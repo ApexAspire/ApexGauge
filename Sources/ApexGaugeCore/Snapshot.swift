@@ -92,4 +92,8 @@ public enum ApexGaugeDefaults {
 
     /// WatchConnectivity payload key carrying the display preference (Bool).
     public static let watchDisplayModePayloadKey = "displayPercentUsed"
+
+    /// WatchConnectivity message key: the watch sends ["requestSnapshot": true]
+    /// when its cached snapshot is stale; the phone refreshes and replies.
+    public static let watchSnapshotRequestKey = "requestSnapshot"
 }
