@@ -4,7 +4,7 @@
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.apex.apexgauge.refresh</string>
+		<string>com.apexaspire.apexgauge.refresh</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>
