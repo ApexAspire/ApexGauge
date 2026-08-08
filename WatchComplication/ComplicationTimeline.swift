@@ -5,6 +5,13 @@ import WidgetKit
 struct ComplicationEntry: TimelineEntry {
     let date: Date
     let snapshot: UsageSnapshot?
+    let displayPercentUsed: Bool
+
+    init(date: Date, snapshot: UsageSnapshot?, displayPercentUsed: Bool = true) {
+        self.date = date
+        self.snapshot = snapshot
+        self.displayPercentUsed = displayPercentUsed
+    }
 
     var oldestFetchedAt: Date? {
         snapshot?.providers.map(\.fetchedAt).min()
@@ -37,7 +44,19 @@ struct ComplicationTimelineProvider: TimelineProvider {
     }
 
     private func entry(at date: Date) -> ComplicationEntry {
-        ComplicationEntry(date: date, snapshot: CachedSnapshotReader.load())
+        ComplicationEntry(
+            date: date,
+            snapshot: CachedSnapshotReader.load(),
+            displayPercentUsed: DisplayPreferenceReader.load()
+        )
+    }
+}
+
+private enum DisplayPreferenceReader {
+    static func load() -> Bool {
+        UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)?.object(
+            forKey: ApexGaugeDefaults.displayPercentUsedKey
+        ) as? Bool ?? true
     }
 }
 

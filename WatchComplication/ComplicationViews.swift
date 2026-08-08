@@ -11,7 +11,7 @@ struct ApexGaugeRectangularComplication: Widget {
                 .privacySensitive()
         }
         .configurationDisplayName("ApexGauge Usage")
-        .description("Claude, Codex, and Kimi quota remaining at a glance.")
+        .description("Claude, Codex, and Kimi quota usage at a glance.")
         .supportedFamilies([.accessoryRectangular])
     }
 }
@@ -42,6 +42,8 @@ private struct RectangularComplicationView: View {
                         Text("ApexGauge")
                             .fontWeight(.semibold)
                         Spacer(minLength: 2)
+                        Text(entry.displayPercentUsed ? "used" : "left")
+                            .foregroundStyle(.secondary)
                         if let oldestFetchedAt = entry.oldestFetchedAt {
                             Text("as of \(formattedTime(oldestFetchedAt))")
                                 .foregroundStyle(.secondary)
@@ -51,15 +53,18 @@ private struct RectangularComplicationView: View {
                 } content: {
                     ProviderQuotaView(
                         provider: .claude,
-                        snapshot: snapshot.provider(.claude)
+                        snapshot: snapshot.provider(.claude),
+                        displayPercentUsed: entry.displayPercentUsed
                     )
                     ProviderQuotaView(
                         provider: .codex,
-                        snapshot: snapshot.provider(.codex)
+                        snapshot: snapshot.provider(.codex),
+                        displayPercentUsed: entry.displayPercentUsed
                     )
                     ProviderQuotaView(
                         provider: .kimi,
-                        snapshot: snapshot.provider(.kimi)
+                        snapshot: snapshot.provider(.kimi),
+                        displayPercentUsed: entry.displayPercentUsed
                     )
                 }
                 .accessoryWidgetGroupStyle(.roundedSquare)
@@ -69,6 +74,8 @@ private struct RectangularComplicationView: View {
                         Text("ApexGauge")
                             .fontWeight(.semibold)
                         Spacer(minLength: 2)
+                        Text(entry.displayPercentUsed ? "used" : "left")
+                            .foregroundStyle(.secondary)
                         if let oldestFetchedAt = entry.oldestFetchedAt {
                             Text("as of \(formattedTime(oldestFetchedAt))")
                                 .foregroundStyle(.secondary)
@@ -77,9 +84,21 @@ private struct RectangularComplicationView: View {
                     .font(.system(size: 9))
 
                     HStack(spacing: 4) {
-                        ProviderQuotaView(provider: .claude, snapshot: snapshot.provider(.claude))
-                        ProviderQuotaView(provider: .codex, snapshot: snapshot.provider(.codex))
-                        ProviderQuotaView(provider: .kimi, snapshot: snapshot.provider(.kimi))
+                        ProviderQuotaView(
+                            provider: .claude,
+                            snapshot: snapshot.provider(.claude),
+                            displayPercentUsed: entry.displayPercentUsed
+                        )
+                        ProviderQuotaView(
+                            provider: .codex,
+                            snapshot: snapshot.provider(.codex),
+                            displayPercentUsed: entry.displayPercentUsed
+                        )
+                        ProviderQuotaView(
+                            provider: .kimi,
+                            snapshot: snapshot.provider(.kimi),
+                            displayPercentUsed: entry.displayPercentUsed
+                        )
                     }
                 }
 #endif
@@ -111,6 +130,7 @@ private struct RectangularComplicationView: View {
 private struct ProviderQuotaView: View {
     let provider: ProviderSnapshot.Provider
     let snapshot: ProviderSnapshot?
+    let displayPercentUsed: Bool
 
     private var lowestRemaining: Double {
         snapshot?.windows.map(\.remainingPercent).min() ?? 0
@@ -129,7 +149,7 @@ private struct ProviderQuotaView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.45)
 
-            Gauge(value: clamped(lowestRemaining), in: 0...100) {
+            Gauge(value: displayedPercent(for: lowestRemaining), in: 0...100) {
                 EmptyView()
             }
             .gaugeStyle(.accessoryLinearCapacity)
@@ -142,8 +162,14 @@ private struct ProviderQuotaView: View {
 
         return snapshot.windows
             .sorted { $0.kind.sortOrder < $1.kind.sortOrder }
-            .map { "\($0.kind.compactLabel) \(Int($0.remainingPercent.rounded()))%" }
+            .map {
+                "\($0.kind.compactLabel) \(Int(displayedPercent(for: $0.remainingPercent).rounded()))%"
+            }
             .joined(separator: " ")
+    }
+
+    private func displayedPercent(for remainingPercent: Double) -> Double {
+        clamped(displayPercentUsed ? 100 - remainingPercent : remainingPercent)
     }
 }
 
@@ -153,11 +179,17 @@ private struct CircularComplicationView: View {
     var body: some View {
         Group {
             if let worstQuota = entry.snapshot?.worstQuota {
-                Gauge(value: clamped(worstQuota.remainingPercent), in: 0...100) {
+                let displayedPercent = clamped(
+                    entry.displayPercentUsed
+                        ? 100 - worstQuota.remainingPercent
+                        : worstQuota.remainingPercent
+                )
+
+                Gauge(value: displayedPercent, in: 0...100) {
                     Text(worstQuota.provider.initial)
                         .fontWeight(.bold)
                 } currentValueLabel: {
-                    Text("\(Int(worstQuota.remainingPercent.rounded()))")
+                    Text("\(Int(displayedPercent.rounded()))")
                         .monospacedDigit()
                 }
                 .gaugeStyle(.accessoryCircularCapacity)

@@ -20,7 +20,10 @@ struct ContentView: View {
                                         .font(.caption.monospaced())
                                         .foregroundStyle(.secondary)
                                     Spacer()
-                                    Text("\(Int(window.remainingPercent.rounded()))% remaining")
+                                    Text(
+                                        "\(displayedPercent(for: window.remainingPercent))% "
+                                            + (connectivityManager.displayPercentUsed ? "used" : "left")
+                                    )
                                         .font(.caption)
                                 }
                             }
@@ -61,5 +64,12 @@ struct ContentView: View {
         case .fable: "F"
         case .other: "O"
         }
+    }
+
+    private func displayedPercent(for remainingPercent: Double) -> Int {
+        let displayed = connectivityManager.displayPercentUsed
+            ? 100 - remainingPercent
+            : remainingPercent
+        return Int(min(max(displayed, 0), 100).rounded())
     }
 }

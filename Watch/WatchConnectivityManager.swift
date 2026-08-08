@@ -7,13 +7,22 @@ import WidgetKit
 @MainActor
 final class WatchConnectivityManager: NSObject, ObservableObject {
     @Published private(set) var snapshot: UsageSnapshot?
+    @Published private(set) var displayPercentUsed: Bool
     @Published private(set) var persistenceError: String?
 
     private let snapshotStore: WatchSnapshotStore
+    private let sharedDefaults: UserDefaults?
     private var isActivated = false
 
-    init(snapshotStore: WatchSnapshotStore = WatchSnapshotStore()) {
+    init(
+        snapshotStore: WatchSnapshotStore = WatchSnapshotStore(),
+        sharedDefaults: UserDefaults? = UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)
+    ) {
         self.snapshotStore = snapshotStore
+        self.sharedDefaults = sharedDefaults
+        displayPercentUsed = sharedDefaults?.object(
+            forKey: ApexGaugeDefaults.displayPercentUsedKey
+        ) as? Bool ?? true
         super.init()
 
         Task { [weak self] in
@@ -52,15 +61,24 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
         }
     }
 
-    nonisolated private func decodeSnapshot(from payload: [String: Any]) {
-        guard let data = payload[ApexGaugeDefaults.watchSnapshotPayloadKey] as? Data,
-              let snapshot = try? JSONDecoder().decode(UsageSnapshot.self, from: data)
-        else {
-            return
+    private func receive(displayPercentUsed: Bool) {
+        sharedDefaults?.set(displayPercentUsed, forKey: ApexGaugeDefaults.displayPercentUsedKey)
+        self.displayPercentUsed = displayPercentUsed
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    nonisolated private func receivePayload(_ payload: [String: Any]) {
+        if let data = payload[ApexGaugeDefaults.watchSnapshotPayloadKey] as? Data,
+           let snapshot = try? JSONDecoder().decode(UsageSnapshot.self, from: data) {
+            Task { @MainActor [weak self] in
+                await self?.receive(snapshot)
+            }
         }
 
-        Task { @MainActor [weak self] in
-            await self?.receive(snapshot)
+        if let displayPercentUsed = payload[ApexGaugeDefaults.watchDisplayModePayloadKey] as? Bool {
+            Task { @MainActor [weak self] in
+                self?.receive(displayPercentUsed: displayPercentUsed)
+            }
         }
     }
 }
@@ -73,14 +91,14 @@ extension WatchConnectivityManager: WCSessionDelegate {
     ) {}
 
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        decodeSnapshot(from: userInfo)
+        receivePayload(userInfo)
     }
 
     nonisolated func session(
         _ session: WCSession,
         didReceiveApplicationContext applicationContext: [String: Any]
     ) {
-        decodeSnapshot(from: applicationContext)
+        receivePayload(applicationContext)
     }
 
 #if os(iOS)

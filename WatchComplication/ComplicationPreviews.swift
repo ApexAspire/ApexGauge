@@ -31,14 +31,26 @@ private let previewSnapshot = UsageSnapshot(providers: [
     ),
 ])
 
-#Preview("Rectangular", as: .accessoryRectangular) {
+#Preview("Rectangular — Used", as: .accessoryRectangular) {
     ApexGaugeRectangularComplication()
 } timeline: {
-    ComplicationEntry(date: previewDate, snapshot: previewSnapshot)
+    ComplicationEntry(date: previewDate, snapshot: previewSnapshot, displayPercentUsed: true)
 }
 
-#Preview("Circular", as: .accessoryCircular) {
+#Preview("Rectangular — Left", as: .accessoryRectangular) {
+    ApexGaugeRectangularComplication()
+} timeline: {
+    ComplicationEntry(date: previewDate, snapshot: previewSnapshot, displayPercentUsed: false)
+}
+
+#Preview("Circular — Used", as: .accessoryCircular) {
     ApexGaugeCircularComplication()
 } timeline: {
-    ComplicationEntry(date: previewDate, snapshot: previewSnapshot)
+    ComplicationEntry(date: previewDate, snapshot: previewSnapshot, displayPercentUsed: true)
+}
+
+#Preview("Circular — Left", as: .accessoryCircular) {
+    ApexGaugeCircularComplication()
+} timeline: {
+    ComplicationEntry(date: previewDate, snapshot: previewSnapshot, displayPercentUsed: false)
 }
