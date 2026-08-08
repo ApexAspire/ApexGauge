@@ -3,6 +3,7 @@ import SwiftUI
 
 struct QuotaWindowRow: View {
     let window: QuotaWindow
+    let displayPercentUsed: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -12,7 +13,7 @@ struct QuotaWindowRow: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 20, alignment: .leading)
 
-                Text("\(Int(window.remainingPercent.rounded()))% remaining")
+                Text("\(Int(displayedPercent.rounded()))% \(modeLabel)")
                     .font(.subheadline.weight(.semibold))
 
                 Spacer()
@@ -24,11 +25,19 @@ struct QuotaWindowRow: View {
                 }
             }
 
-            ProgressView(value: clampedPercent, total: 100)
+            ProgressView(value: displayedPercent, total: 100)
                 .tint(gaugeColor)
-                .accessibilityLabel("\(kindAccessibilityLabel) quota remaining")
-                .accessibilityValue("\(Int(window.remainingPercent.rounded())) percent")
+                .accessibilityLabel("\(kindAccessibilityLabel) quota \(modeLabel)")
+                .accessibilityValue("\(Int(displayedPercent.rounded())) percent")
         }
+    }
+
+    private var displayedPercent: Double {
+        displayPercentUsed ? 100 - clampedPercent : clampedPercent
+    }
+
+    private var modeLabel: String {
+        displayPercentUsed ? "used" : "left"
     }
 
     private var clampedPercent: Double {

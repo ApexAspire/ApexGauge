@@ -15,7 +15,10 @@ struct RootView: View {
 
                     if let snapshot = viewModel.snapshot {
                         ForEach(snapshot.providers, id: \.provider) { provider in
-                            ProviderCardView(snapshot: provider)
+                            ProviderCardView(
+                                snapshot: provider,
+                                displayPercentUsed: viewModel.displayPercentUsed
+                            )
                         }
                     } else {
                         ProgressView("Loading usage…")

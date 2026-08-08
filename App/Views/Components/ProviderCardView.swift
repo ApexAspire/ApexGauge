@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ProviderCardView: View {
     let snapshot: ProviderSnapshot
+    let displayPercentUsed: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -10,6 +11,12 @@ struct ProviderCardView: View {
                 Label(providerName, systemImage: providerSymbol)
                     .font(.headline)
                 Spacer()
+                Text(displayPercentUsed ? "used" : "left")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(.quaternary, in: Capsule())
                 Text("as of \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -21,7 +28,7 @@ struct ProviderCardView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(Array(snapshot.windows.enumerated()), id: \.offset) { _, window in
-                    QuotaWindowRow(window: window)
+                    QuotaWindowRow(window: window, displayPercentUsed: displayPercentUsed)
                 }
             }
 

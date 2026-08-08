@@ -8,7 +8,10 @@ struct ApexGaugeApp: App {
     private let connectivity: PhoneConnectivityManager
 
     init() {
-        UserDefaults.standard.register(defaults: [UsageViewModel.useMockDataKey: true])
+        UserDefaults.standard.register(defaults: [
+            UsageViewModel.useMockDataKey: true,
+            ApexGaugeDefaults.displayPercentUsedKey: true,
+        ])
 
         let credentialStore = KeychainCredentialStore()
         self.credentialStore = credentialStore

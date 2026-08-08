@@ -4,32 +4,38 @@ import SwiftUI
 struct CodexSettingsView: View {
     let credentialStore: KeychainCredentialStore
 
-    @State private var accessToken = ""
-    @State private var refreshToken = ""
-    @State private var accountID = ""
+    @State private var pastedCredentials = ""
     @State private var isConnected = false
     @State private var isWorking = false
     @State private var statusMessage: String?
+    @State private var statusIsError = false
 
     var body: some View {
         Form {
-            Section("How to connect") {
-                Text("On your Mac, run this command in Terminal, then paste each value below:")
-                Text(#"jq -r '"access: \(.tokens.access_token)\nrefresh: \(.tokens.refresh_token)\naccount: \(.tokens.account_id)"' ~/.codex/auth.json"#)
-                    .font(.system(.footnote, design: .monospaced))
-                    .textSelection(.enabled)
-            }
+            QRConnectSection(
+                providerName: "Codex",
+                command: "swift ~/Projects/ApexGauge/Scripts/qr-connect.swift codex",
+                onPayload: handleScannedPayload
+            )
 
-            Section("Credentials") {
-                SecureField("Access token", text: $accessToken)
+            Section("Paste fallback") {
+                Text("On your Mac: cat ~/.codex/auth.json, copy, paste here.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                TextEditor(text: $pastedCredentials)
+                    .frame(minHeight: 130)
+                    .font(.system(.footnote, design: .monospaced))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                SecureField("Refresh token", text: $refreshToken)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                SecureField("Account ID", text: $accountID)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
+                    .privacySensitive()
+
+                Button("Connect") {
+                    Task { await connectPastedCredentials() }
+                }
+                .disabled(pastedCredentials.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWorking)
+
+                CredentialSecurityNote()
             }
 
             Section {
@@ -38,13 +44,8 @@ struct CodexSettingsView: View {
                     .foregroundStyle(.orange)
             }
 
-            Section {
-                Button("Connect") {
-                    Task { await connect() }
-                }
-                .disabled(!hasAllFields || isWorking)
-
-                if isConnected {
+            if isConnected {
+                Section {
                     Button("Disconnect", role: .destructive) {
                         Task { await disconnect() }
                     }
@@ -55,7 +56,7 @@ struct CodexSettingsView: View {
             if let statusMessage {
                 Section {
                     Text(statusMessage)
-                        .foregroundStyle(isConnected ? .green : .red)
+                        .foregroundStyle(statusIsError ? .red : .green)
                 }
             }
         }
@@ -63,38 +64,45 @@ struct CodexSettingsView: View {
         .task { await loadConnectionState() }
     }
 
-    private var hasAllFields: Bool {
-        !accessToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !refreshToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !accountID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
     private func loadConnectionState() async {
         do {
             isConnected = try await credentialStore.loadCodex() != nil
         } catch {
+            statusIsError = true
             statusMessage = error.localizedDescription
         }
     }
 
-    private func connect() async {
+    @MainActor
+    private func handleScannedPayload(_ payload: ConnectPayload) {
+        guard let credentials = payload.codexCredentials else {
+            statusIsError = true
+            statusMessage = "That QR code is not for Codex. Scan the Codex connect code."
+            return
+        }
+        Task { await save(credentials, successMessage: "Codex connected from QR.") }
+    }
+
+    private func connectPastedCredentials() async {
+        guard let credentials = CredentialsParser.parseCodex(pastedCredentials) else {
+            statusIsError = true
+            statusMessage = "Could not find Codex credentials in that text. Paste the full auth file or labelled token lines."
+            return
+        }
+        await save(credentials, successMessage: "Codex credentials saved securely.")
+    }
+
+    private func save(_ credentials: CodexCredentials, successMessage: String) async {
         isWorking = true
         defer { isWorking = false }
         do {
-            try await credentialStore.saveCodex(
-                CodexCredentials(
-                    accessToken: accessToken.trimmingCharacters(in: .whitespacesAndNewlines),
-                    refreshToken: refreshToken.trimmingCharacters(in: .whitespacesAndNewlines),
-                    accountID: accountID.trimmingCharacters(in: .whitespacesAndNewlines)
-                )
-            )
-            accessToken = ""
-            refreshToken = ""
-            accountID = ""
+            try await credentialStore.saveCodex(credentials)
+            pastedCredentials = ""
             isConnected = true
-            statusMessage = "Codex credentials saved securely."
+            statusIsError = false
+            statusMessage = successMessage
         } catch {
-            isConnected = false
+            statusIsError = true
             statusMessage = error.localizedDescription
         }
     }
@@ -104,12 +112,12 @@ struct CodexSettingsView: View {
         defer { isWorking = false }
         do {
             try await credentialStore.clear(provider: .codex)
-            accessToken = ""
-            refreshToken = ""
-            accountID = ""
+            pastedCredentials = ""
             isConnected = false
+            statusIsError = false
             statusMessage = "Codex disconnected."
         } catch {
+            statusIsError = true
             statusMessage = error.localizedDescription
         }
     }

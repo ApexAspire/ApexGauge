@@ -10,6 +10,7 @@ final class UsageViewModel: ObservableObject {
     @Published private(set) var isRefreshing = false
     @Published private(set) var persistenceError: String?
     @Published private(set) var useMockData: Bool
+    @Published private(set) var displayPercentUsed: Bool
 
     private let mockEngine: any UsageEngineing
     private let liveEngine: any UsageEngineing
@@ -33,11 +34,24 @@ final class UsageViewModel: ObservableObject {
         self.changeDetector = changeDetector
         self.defaults = defaults
         useMockData = defaults.object(forKey: Self.useMockDataKey) as? Bool ?? true
+        displayPercentUsed = defaults.object(forKey: ApexGaugeDefaults.displayPercentUsedKey) as? Bool ?? true
     }
 
     func setUseMockData(_ enabled: Bool) {
         useMockData = enabled
         defaults.set(enabled, forKey: Self.useMockDataKey)
+    }
+
+    func setDisplayPercentUsed(_ enabled: Bool) {
+        displayPercentUsed = enabled
+        defaults.set(enabled, forKey: ApexGaugeDefaults.displayPercentUsedKey)
+        connectivity?.pushDisplayMode(percentUsed: enabled)
+
+        // A mode change must re-render the watch immediately even when the
+        // quota values themselves have not moved.
+        if let snapshot {
+            connectivity?.push(snapshot)
+        }
     }
 
     func refresh() async {

@@ -4,33 +4,42 @@ import SwiftUI
 struct ClaudeSettingsView: View {
     let credentialStore: KeychainCredentialStore
 
-    @State private var refreshToken = ""
+    @State private var pastedCredentials = ""
     @State private var isConnected = false
     @State private var isWorking = false
     @State private var statusMessage: String?
+    @State private var statusIsError = false
 
     var body: some View {
         Form {
-            Section("How to connect") {
-                Text("On your Mac, run this command in Terminal, then paste the refresh token below:")
-                Text("jq -r .claudeAiOauth.refreshToken ~/.claude/.credentials.json")
-                    .font(.system(.footnote, design: .monospaced))
-                    .textSelection(.enabled)
-            }
+            QRConnectSection(
+                providerName: "Claude",
+                command: "swift ~/Projects/ApexGauge/Scripts/qr-connect.swift claude",
+                onPayload: handleScannedPayload
+            )
 
-            Section("Refresh token") {
-                SecureField("Claude refresh token", text: $refreshToken)
+            Section("Paste fallback") {
+                Text("On your Mac: cat ~/.claude/.credentials.json, copy, paste here.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                TextEditor(text: $pastedCredentials)
+                    .frame(minHeight: 130)
+                    .font(.system(.footnote, design: .monospaced))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .privacySensitive()
+
+                Button("Connect") {
+                    Task { await connectPastedCredentials() }
+                }
+                .disabled(pastedCredentials.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWorking)
+
+                CredentialSecurityNote()
             }
 
-            Section {
-                Button("Connect") {
-                    Task { await connect() }
-                }
-                .disabled(refreshToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWorking)
-
-                if isConnected {
+            if isConnected {
+                Section {
                     Button("Disconnect", role: .destructive) {
                         Task { await disconnect() }
                     }
@@ -41,7 +50,7 @@ struct ClaudeSettingsView: View {
             if let statusMessage {
                 Section {
                     Text(statusMessage)
-                        .foregroundStyle(isConnected ? .green : .red)
+                        .foregroundStyle(statusIsError ? .red : .green)
                 }
             }
         }
@@ -53,25 +62,41 @@ struct ClaudeSettingsView: View {
         do {
             isConnected = try await credentialStore.loadClaude() != nil
         } catch {
+            statusIsError = true
             statusMessage = error.localizedDescription
         }
     }
 
-    private func connect() async {
+    @MainActor
+    private func handleScannedPayload(_ payload: ConnectPayload) {
+        guard let credentials = payload.claudeCredentials else {
+            statusIsError = true
+            statusMessage = "That QR code is not for Claude. Scan the Claude connect code."
+            return
+        }
+        Task { await save(credentials, successMessage: "Claude connected from QR.") }
+    }
+
+    private func connectPastedCredentials() async {
+        guard let credentials = CredentialsParser.parseClaude(pastedCredentials) else {
+            statusIsError = true
+            statusMessage = "Could not find Claude credentials in that text. Paste the full credentials file or a refresh token."
+            return
+        }
+        await save(credentials, successMessage: "Claude credentials saved securely.")
+    }
+
+    private func save(_ credentials: ClaudeCredentials, successMessage: String) async {
         isWorking = true
         defer { isWorking = false }
         do {
-            try await credentialStore.saveClaude(
-                ClaudeCredentials(
-                    accessToken: "",
-                    refreshToken: refreshToken.trimmingCharacters(in: .whitespacesAndNewlines)
-                )
-            )
-            refreshToken = ""
+            try await credentialStore.saveClaude(credentials)
+            pastedCredentials = ""
             isConnected = true
-            statusMessage = "Claude credentials saved securely."
+            statusIsError = false
+            statusMessage = successMessage
         } catch {
-            isConnected = false
+            statusIsError = true
             statusMessage = error.localizedDescription
         }
     }
@@ -81,10 +106,12 @@ struct ClaudeSettingsView: View {
         defer { isWorking = false }
         do {
             try await credentialStore.clear(provider: .claude)
-            refreshToken = ""
+            pastedCredentials = ""
             isConnected = false
+            statusIsError = false
             statusMessage = "Claude disconnected."
         } catch {
+            statusIsError = true
             statusMessage = error.localizedDescription
         }
     }

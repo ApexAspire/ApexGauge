@@ -8,6 +8,7 @@ struct KimiSettingsView: View {
     @State private var isConnected = false
     @State private var isWorking = false
     @State private var statusMessage: String?
+    @State private var statusIsError = false
 
     var body: some View {
         Form {
@@ -20,6 +21,8 @@ struct KimiSettingsView: View {
                 SecureField("Kimi API key", text: $apiKey)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+
+                CredentialSecurityNote()
             }
 
             Section {
@@ -39,7 +42,7 @@ struct KimiSettingsView: View {
             if let statusMessage {
                 Section {
                     Text(statusMessage)
-                        .foregroundStyle(isConnected ? .green : .red)
+                        .foregroundStyle(statusIsError ? .red : .green)
                 }
             }
         }
@@ -51,22 +54,28 @@ struct KimiSettingsView: View {
         do {
             isConnected = try await credentialStore.loadKimi() != nil
         } catch {
+            statusIsError = true
             statusMessage = error.localizedDescription
         }
     }
 
     private func connect() async {
+        guard let credentials = CredentialsParser.parseKimi(apiKey) else {
+            statusIsError = true
+            statusMessage = "Paste a Kimi API key to connect."
+            return
+        }
+
         isWorking = true
         defer { isWorking = false }
         do {
-            try await credentialStore.saveKimi(
-                KimiCredentials(apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines))
-            )
+            try await credentialStore.saveKimi(credentials)
             apiKey = ""
             isConnected = true
+            statusIsError = false
             statusMessage = "Kimi credentials saved securely."
         } catch {
-            isConnected = false
+            statusIsError = true
             statusMessage = error.localizedDescription
         }
     }
@@ -78,8 +87,10 @@ struct KimiSettingsView: View {
             try await credentialStore.clear(provider: .kimi)
             apiKey = ""
             isConnected = false
+            statusIsError = false
             statusMessage = "Kimi disconnected."
         } catch {
+            statusIsError = true
             statusMessage = error.localizedDescription
         }
     }

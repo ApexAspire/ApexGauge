@@ -6,6 +6,24 @@ struct SettingsView: View {
 
     var body: some View {
         List {
+            Section("Quota display") {
+                Picker(
+                    "Percentage mode",
+                    selection: Binding(
+                        get: { viewModel.displayPercentUsed },
+                        set: { viewModel.setDisplayPercentUsed($0) }
+                    )
+                ) {
+                    Text("% used").tag(true)
+                    Text("% left").tag(false)
+                }
+                .pickerStyle(.segmented)
+
+                Text("Applies to every quota shown on this iPhone and the paired Apple Watch.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Data") {
                 Toggle(
                     "Use Mock Data",

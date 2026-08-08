@@ -58,6 +58,30 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
         }
     }
 
+    func pushDisplayMode(percentUsed: Bool) {
+        guard let session else {
+            lastPushDescription = "WatchConnectivity not activated"
+            return
+        }
+
+        guard session.activationState == .activated,
+              session.isPaired,
+              session.isWatchAppInstalled
+        else {
+            lastPushDescription = "Paired watch app unavailable"
+            return
+        }
+
+        do {
+            try session.updateApplicationContext([
+                ApexGaugeDefaults.watchDisplayModePayloadKey: percentUsed,
+            ])
+            lastPushDescription = "display mode application context"
+        } catch {
+            lastPushDescription = "Display mode context failed: \(error.localizedDescription)"
+        }
+    }
+
     nonisolated func session(
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
