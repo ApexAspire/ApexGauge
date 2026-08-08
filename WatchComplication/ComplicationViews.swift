@@ -9,8 +9,9 @@ struct ApexGaugeRectangularComplication: Widget {
         StaticConfiguration(kind: kind, provider: ComplicationTimelineProvider()) { entry in
             RectangularComplicationView(entry: entry)
                 .privacySensitive()
+                .containerBackground(for: .widget) { Color.clear }
         }
-        .configurationDisplayName("ApexGauge Usage")
+        .configurationDisplayName("Apex Gauge Usage")
         .description("Claude, Codex, and Kimi quota usage at a glance.")
         .supportedFamilies([.accessoryRectangular])
     }
@@ -23,8 +24,9 @@ struct ApexGaugeCircularComplication: Widget {
         StaticConfiguration(kind: kind, provider: ComplicationTimelineProvider()) { entry in
             CircularComplicationView(entry: entry)
                 .privacySensitive()
+                .containerBackground(for: .widget) { Color.clear }
         }
-        .configurationDisplayName("ApexGauge Lowest Quota")
+        .configurationDisplayName("Apex Gauge Lowest Quota")
         .description("The lowest remaining AI quota across all providers.")
         .supportedFamilies([.accessoryCircular])
     }
