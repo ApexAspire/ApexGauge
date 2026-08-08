@@ -194,7 +194,7 @@ struct QRConnectSection: View {
 struct CredentialSecurityNote: View {
     var body: some View {
         Label(
-            "QR avoids the system pasteboard. Credentials stay in this device's Keychain — they are not synced or backed up.",
+            "QR avoids the system pasteboard. The code carries your refresh token (and, when it fits, the current short-lived access token). Credentials stay in this device's Keychain — never synced, never migrated.",
             systemImage: "lock.shield"
         )
         .font(ApexTheme.Typography.caption)

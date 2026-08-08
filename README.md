@@ -43,15 +43,15 @@ To connect Claude or Codex, run the QR helper on the Mac that already has the pr
    swift Scripts/qr-connect.swift codex
    ```
 
-2. **No clone, with developer tools:** download the source first so you can inspect it before running it.
+2. **No clone, with developer tools:** clone and run — the script is inspectable before you run it.
 
    ```sh
-   curl -fsSL https://raw.githubusercontent.com/ApexAspire/ApexGauge/main/Scripts/qr-connect.swift -o /tmp/qr-connect.swift && swift /tmp/qr-connect.swift codex
+   git clone --depth 1 https://github.com/ApexAspire/ApexGauge.git && cd ApexGauge && swift Scripts/qr-connect.swift codex
    ```
 
-3. **No developer tools:** download the signed universal `qr-connect` binary from [GitHub Releases](https://github.com/ApexAspire/ApexGauge/releases). Release binaries are built with [`Scripts/build-qr-connect.sh`](Scripts/build-qr-connect.sh).
+3. **No developer tools:** download the universal `qr-connect` binary from [GitHub Releases](https://github.com/ApexAspire/ApexGauge/releases). The binary is currently an unsigned convenience build (Developer ID signing planned) — the inspectable script above is the recommended path. Release binaries are built with [`Scripts/build-qr-connect.sh`](Scripts/build-qr-connect.sh).
 
-The secret payload contains only the refresh token; Codex may also include its non-secret account ID. The QR deletes itself after scanning, and the credentials stay in this-device-only Keychain storage on the iPhone.
+The QR payload contains the refresh token (plus, for Claude, the current short-lived access token when it fits in the code; Codex may also include its non-secret account ID). The QR is rendered in a window on your Mac — nothing is written to disk — and the credentials stay in this-device-only Keychain storage on the iPhone.
 
 ## Repo layout
 

@@ -21,7 +21,7 @@ struct ClaudeSettingsView: View {
 
             QRConnectSection(
                 providerName: "Claude",
-                command: "curl -fsSL https://raw.githubusercontent.com/ApexAspire/ApexGauge/main/Scripts/qr-connect.swift -o /tmp/qr-connect.swift && swift /tmp/qr-connect.swift claude",
+                command: "git clone --depth 1 https://github.com/ApexAspire/ApexGauge.git && cd ApexGauge && swift Scripts/qr-connect.swift claude",
                 clonedRepoCommand: "swift Scripts/qr-connect.swift claude",
                 onPayload: handleScannedPayload
             )

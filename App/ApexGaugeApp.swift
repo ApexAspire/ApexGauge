@@ -34,8 +34,13 @@ struct ApexGaugeApp: App {
         self.connectivity = connectivity
 
         // Shared refresh pipeline for scheduled and watch-initiated refreshes.
+        // Mock mode is a privacy promise ("without contacting providers"), so
+        // background and watch-triggered paths must honour it too.
         let performRefresh: @Sendable () async -> UsageSnapshot = {
-            let snapshot = await liveEngine.refreshAll()
+            let useMock = UserDefaults.standard.bool(forKey: UsageViewModel.useMockDataKey)
+            let snapshot = useMock
+                ? await MockUsageEngine().refreshAll()
+                : await liveEngine.refreshAll()
             try? await snapshotStore.save(snapshot)
             if !RefreshInvocation.isExplicitWatchRequest,
                changeDetector.shouldPush(snapshot),

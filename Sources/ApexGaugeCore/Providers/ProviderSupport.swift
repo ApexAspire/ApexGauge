@@ -30,8 +30,10 @@ enum ProviderSupport {
                 .flatMap { TimeInterval($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
             throw UsageFetchError.rateLimited(retryAfter: retryAfter)
         default:
-            let body = String(data: data, encoding: .utf8) ?? "<non-UTF8 body>"
-            throw UsageFetchError.http(status: response.statusCode, body: String(body.prefix(500)))
+            // Never propagate raw provider error bodies: they can echo account
+            // data or token fragments, and this text is persisted into the
+            // shared snapshot and sent to the watch. Status code only.
+            throw UsageFetchError.http(status: response.statusCode, body: "Provider returned an unexpected error")
         }
     }
 
