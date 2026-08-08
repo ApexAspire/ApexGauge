@@ -7,6 +7,7 @@ struct ProviderCardView: View {
     let snapshot: ProviderSnapshot
     let displayPercentUsed: Bool
     let displayResetCountdown: Bool
+    let providerStatus: ProviderStatus?
     let isRefreshing: Bool
     let refreshDisabled: Bool
     let onRefresh: () -> Void
@@ -14,6 +15,10 @@ struct ProviderCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ApexTheme.Spacing.small) {
             header
+
+            if let providerStatus, providerStatus.status != .ok {
+                ProviderStatusBannerView(status: providerStatus)
+            }
 
             if snapshot.windows.isEmpty {
                 Label("No quota data is available.", systemImage: "gauge.with.dots.needle.0percent")
@@ -34,7 +39,7 @@ struct ProviderCardView: View {
             }
 
             if let error = snapshot.lastError {
-                ErrorBannerView(message: error)
+                ErrorBannerView(message: "Account connection issue — Apex Gauge could not refresh: \(error)")
             }
         }
         .padding(.horizontal, ApexTheme.Spacing.medium)
@@ -135,6 +140,67 @@ struct ProviderCardView: View {
             }
             return lhsOrder < rhsOrder
         }
+    }
+}
+
+private struct ProviderStatusBannerView: View {
+    let status: ProviderStatus
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: ApexTheme.Spacing.xSmall) {
+                Text(title)
+                    .font(ApexTheme.Typography.caption.weight(.semibold))
+
+                if !trimmedMessage.isEmpty {
+                    Text(trimmedMessage)
+                        .font(ApexTheme.Typography.caption)
+                }
+            }
+        } icon: {
+            Image(systemName: "network.slash")
+        }
+        .foregroundStyle(foregroundColor)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(ApexTheme.Spacing.medium)
+        .background(
+            backgroundColor,
+            in: RoundedRectangle(
+                cornerRadius: ApexTheme.Radius.innerCard,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: ApexTheme.Radius.innerCard,
+                style: .continuous
+            )
+            .stroke(foregroundColor.opacity(0.35), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var title: String {
+        switch status.status {
+        case .ok:
+            "Provider operating normally"
+        case .degraded:
+            "Provider issue — values may be stale"
+        case .broken:
+            "Provider endpoint unavailable"
+        }
+    }
+
+    private var trimmedMessage: String {
+        status.message.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var foregroundColor: Color {
+        status.status == .degraded ? ApexTheme.Colors.warning : ApexTheme.Colors.danger
+    }
+
+    private var backgroundColor: Color {
+        status.status == .degraded ? ApexTheme.Colors.warningSoft : ApexTheme.Colors.dangerSoft
     }
 }
 

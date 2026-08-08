@@ -15,6 +15,7 @@ final class UsageViewModel: ObservableObject {
     @Published private(set) var displayResetCountdown: Bool
     @Published private(set) var complicationWindows: [ProviderSnapshot.Provider: ComplicationWindowChoice]
     @Published private(set) var complicationHiddenProviders: Set<ProviderSnapshot.Provider>
+    @Published private(set) var providerStatusReport: ProviderStatusReport?
     @Published private var refreshingProviderIDs: Set<String> = []
 
     private let mockEngine: any UsageEngineing
@@ -24,6 +25,7 @@ final class UsageViewModel: ObservableObject {
     private let connectivity: PhoneConnectivityManager?
     private let changeDetector: SnapshotChangeDetector?
     private let defaults: UserDefaults
+    private let providerStatusFetcher: ProviderStatusFetcher
 
     init(
         mockEngine: any UsageEngineing,
@@ -32,7 +34,8 @@ final class UsageViewModel: ObservableObject {
         snapshotStore: SnapshotStore,
         connectivity: PhoneConnectivityManager? = nil,
         changeDetector: SnapshotChangeDetector? = nil,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        providerStatusFetcher: ProviderStatusFetcher? = nil
     ) {
         self.mockEngine = mockEngine
         self.liveEngine = liveEngine
@@ -41,11 +44,13 @@ final class UsageViewModel: ObservableObject {
         self.connectivity = connectivity
         self.changeDetector = changeDetector
         self.defaults = defaults
+        self.providerStatusFetcher = providerStatusFetcher ?? ProviderStatusFetcher(defaults: defaults)
         useMockData = defaults.object(forKey: Self.useMockDataKey) as? Bool ?? true
         displayPercentUsed = defaults.object(forKey: ApexGaugeDefaults.displayPercentUsedKey) as? Bool ?? true
         displayResetCountdown = defaults.object(forKey: Self.displayResetCountdownKey) as? Bool ?? false
         complicationWindows = ComplicationWindowPreferences.decode(from: defaults)
         complicationHiddenProviders = ComplicationWindowPreferences.decodeHidden(from: defaults)
+        providerStatusReport = nil
     }
 
     func setComplicationWindow(
@@ -101,6 +106,10 @@ final class UsageViewModel: ObservableObject {
         refreshingProviderIDs.contains(provider.rawValue)
     }
 
+    func status(for provider: ProviderSnapshot.Provider) -> ProviderStatus? {
+        providerStatusReport?.status(for: provider)
+    }
+
     func refresh() async {
         guard !isRefreshing else { return }
         isRefreshing = true
@@ -111,6 +120,7 @@ final class UsageViewModel: ObservableObject {
         let refreshedSnapshot = await engine.refreshAll()
 
         await persistAndPublish(refreshedSnapshot, pushToWatch: !useMockData)
+        providerStatusReport = await providerStatusFetcher.fetch()
     }
 
     func refresh(provider: ProviderSnapshot.Provider) async {

@@ -12,6 +12,13 @@ struct ClaudeSettingsView: View {
 
     var body: some View {
         Form {
+            Section("Before you connect") {
+                Text("Apex Gauge is unofficial and is not affiliated with Anthropic. It reads your usage through an undocumented provider endpoint using your own account credentials, which may stop working or carry account risk. Your token never leaves this device except when sent to Anthropic.")
+                    .font(ApexTheme.Typography.caption)
+                    .foregroundStyle(ApexTheme.Colors.inkSecondary)
+            }
+            .apexListRow()
+
             QRConnectSection(
                 providerName: "Claude",
                 command: "curl -fsSL https://raw.githubusercontent.com/ApexAspire/ApexGauge/main/Scripts/qr-connect.swift -o /tmp/qr-connect.swift && swift /tmp/qr-connect.swift claude",

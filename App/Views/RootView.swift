@@ -36,6 +36,7 @@ struct RootView: View {
                                 snapshot: provider,
                                 displayPercentUsed: viewModel.displayPercentUsed,
                                 displayResetCountdown: viewModel.displayResetCountdown,
+                                providerStatus: viewModel.status(for: provider.provider),
                                 isRefreshing: viewModel.isRefreshing(provider: provider.provider),
                                 refreshDisabled: viewModel.isRefreshing,
                                 onRefresh: {
