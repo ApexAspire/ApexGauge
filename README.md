@@ -62,4 +62,4 @@ The secret payload contains only the refresh token; Codex may also include its n
 
 Repo/product: **ApexGauge**. Naming survey (2026-08-08): `QuotaWatch` (Jira app), `TokenWatch` (multiple), `ApexPulse` (Salesforce Labs + battery monitor; also internal Pulse project) are taken; `ApexMonitor` collides with a monitor-backlight hardware product. `ApexGauge` is unclaimed, on-brand with the Apex family, and describes the UI (gauge rows). Note: [LimitWatch](https://limitwatch.app/) is an existing iPhone-widget AI-usage tracker — a direct adjacent product to be aware of if this is publicly released.
 
-License: TBD before any public release.
+License: [MIT](LICENSE) (covers the code only — the "Apex Gauge" name and icon are not licensed for reuse).
