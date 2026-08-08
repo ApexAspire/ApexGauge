@@ -61,25 +61,77 @@ private struct RectangularComplicationView: View {
     }
 }
 
-/// One provider row: brand-tinted symbol, % numeral, thin RAG bar, compact
-/// reset countdown. One bar per provider — the user picks which window each
-/// row shows (default: lowest remaining).
+/// One provider row: brand-tinted symbol, then two half-width mini-bars —
+/// Session on the left, the user's chosen window (default Week) on the right.
+/// Providers without a session window get a single full-width bar.
 private struct ProviderRowView: View {
     let provider: ProviderSnapshot.Provider
     let snapshot: ProviderSnapshot?
     let entry: ComplicationEntry
 
-    private var window: QuotaWindow? {
-        snapshot?.window(for: entry.windowChoices[provider] ?? .lowest)
+    private var choice: ComplicationWindowChoice {
+        entry.windowChoices[provider] ?? .weekly
     }
 
+    private var sessionWindow: QuotaWindow? {
+        snapshot?.windows.first { $0.kind == .session }
+    }
+
+    /// The second bar's window: the chosen kind, falling back to the lowest
+    /// non-session window (so the two bars never duplicate).
+    private var secondaryWindow: QuotaWindow? {
+        guard let snapshot else { return nil }
+        if choice != .lowest {
+            let kind: QuotaWindow.Kind? = switch choice {
+            case .session: .session
+            case .weekly: .weekly
+            case .fable: .fable
+            case .lowest: nil
+            }
+            if let kind, let match = snapshot.windows.first(where: { $0.kind == kind }) {
+                return match
+            }
+        }
+        let nonSession = snapshot.windows.filter { $0.kind != .session }
+        return (nonSession.isEmpty ? snapshot.windows : nonSession)
+            .min(by: { $0.remainingPercent < $1.remainingPercent })
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(provider.rawValue)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .foregroundStyle(provider.brandTint)
+                .frame(width: 15, height: 15)
+
+            if let sessionWindow {
+                MiniGauge(window: sessionWindow, entry: entry)
+            }
+            if let secondaryWindow {
+                MiniGauge(window: secondaryWindow, entry: entry)
+            }
+            if sessionWindow == nil, secondaryWindow == nil {
+                Text("—")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+}
+
+/// A half-row gauge: % and reset flank a thin RAG bar.
+private struct MiniGauge: View {
+    let window: QuotaWindow
+    let entry: ComplicationEntry
+
     private var displayedPercent: Double {
-        guard let window else { return 0 }
-        return clamped(entry.displayPercentUsed ? 100 - window.remainingPercent : window.remainingPercent)
+        clamped(entry.displayPercentUsed ? 100 - window.remainingPercent : window.remainingPercent)
     }
 
     private var barColor: Color {
-        switch window?.remainingPercent ?? 0 {
+        switch window.remainingPercent {
         case ..<25: .red
         case ..<50: .orange
         default: .green
@@ -87,29 +139,26 @@ private struct ProviderRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 3) {
-            Image(systemName: provider.symbol)
-                .font(.system(size: 8, weight: .semibold))
-                .foregroundStyle(provider.brandTint)
-                .frame(width: 12)
-
-            Text(window == nil ? "—" : "\(Int(displayedPercent.rounded()))%")
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
+        HStack(spacing: 2) {
+            Text("\(Int(displayedPercent.rounded()))")
+                .font(.system(size: 9, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .frame(width: 30, alignment: .trailing)
+                .frame(width: 20, alignment: .trailing)
 
             ComplicationGaugeBar(value: displayedPercent, tint: barColor)
                 .frame(maxWidth: .infinity)
 
-            if let resetsAt = window?.resetsAt {
+            if let resetsAt = window.resetsAt {
                 Text(compactReset(until: resetsAt))
-                    .font(.system(size: 8, weight: .medium, design: .rounded))
+                    .font(.system(size: 7, weight: .medium, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .fixedSize()
+                    .minimumScaleFactor(0.8)
+                    .frame(width: 24, alignment: .trailing)
             }
         }
+        .frame(maxWidth: .infinity)
     }
 
     /// Compact countdown with no spaces: "3h12m", "2d4h", "45m".

@@ -73,10 +73,16 @@ struct ProviderCardView: View {
     }
 
     private var providerTitle: some View {
-        Label(providerName, systemImage: providerSymbol)
+        Label {
+            Text(providerName)
+        } icon: {
+            Image(snapshot.provider.rawValue)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 20, height: 20)
+        }
             .font(ApexTheme.Typography.displaySmall)
             .foregroundStyle(ApexTheme.Colors.inkPrimary)
-            .symbolRenderingMode(.monochrome)
             .lineLimit(1)
     }
 
@@ -115,14 +121,6 @@ struct ProviderCardView: View {
         case .claude: "Claude"
         case .codex: "Codex"
         case .kimi: "Kimi"
-        }
-    }
-
-    private var providerSymbol: String {
-        switch snapshot.provider {
-        case .claude: "sparkles"
-        case .codex: "terminal"
-        case .kimi: "moon.stars"
         }
     }
 

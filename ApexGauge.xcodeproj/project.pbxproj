@@ -56,6 +56,12 @@
 		};
 /* End PBXCopyFilesBuildPhase section */
 
+/* Begin PBXFileReference section */
+		A10000000000000000000007 /* ApexGauge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ApexGauge.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000005 /* ApexGaugeWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ApexGaugeWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C30000000000000000000005 /* ApexGaugeComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ApexGaugeComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		A20000000000000000000010 /* Exceptions for "App" folder in "ApexGauge" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -93,6 +99,11 @@
 				C30000000000000000000010 /* Exceptions for "WatchComplication" folder in "ApexGaugeComplication" target */,
 			);
 			path = WatchComplication;
+			sourceTree = "<group>";
+		};
+		D40000000000000000000003 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -164,6 +175,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				A10000000000000000000003 /* App */,
+				D40000000000000000000003 /* Shared */,
 			);
 			name = ApexGauge;
 			packageProductDependencies = (
@@ -189,6 +201,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				A20000000000000000000003 /* Watch */,
+				D40000000000000000000003 /* Shared */,
 			);
 			name = ApexGaugeWatch;
 			packageProductDependencies = (
@@ -212,6 +225,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				C30000000000000000000003 /* WatchComplication */,
+				D40000000000000000000003 /* Shared */,
 			);
 			name = ApexGaugeComplication;
 			packageProductDependencies = (
@@ -313,12 +327,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXFileReference section */
-		A10000000000000000000007 /* ApexGauge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ApexGauge.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A20000000000000000000005 /* ApexGaugeWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ApexGaugeWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		C30000000000000000000005 /* ApexGaugeComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ApexGaugeComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
 
 /* Begin PBXTargetDependency section */
 		A2000000000000000000000F /* PBXTargetDependency */ = {
@@ -643,20 +651,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A1000000000000000000000D /* Build configuration list for PBXProject "ApexGauge" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A1000000000000000000000F /* Debug */,
-				A10000000000000000000010 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		A10000000000000000000009 /* Build configuration list for PBXNativeTarget "ApexGauge" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A10000000000000000000011 /* Debug */,
 				A10000000000000000000012 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1000000000000000000000D /* Build configuration list for PBXProject "ApexGauge" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000000000000000000000F /* Debug */,
+				A10000000000000000000010 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
