@@ -20,3 +20,6 @@ build/
 
 # Distribution artifacts
 dist/
+
+# Local agent session knowledge (may reference internal workflows)
+.project-log.md
