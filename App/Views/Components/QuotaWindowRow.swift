@@ -7,19 +7,29 @@ struct QuotaWindowRow: View {
     let displayResetCountdown: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
+        VStack(alignment: .leading, spacing: ApexTheme.Spacing.small) {
+            HStack(alignment: .firstTextBaseline, spacing: ApexTheme.Spacing.small) {
                 Text(kindLabel)
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
-                    .frame(width: 56, alignment: .leading)
+                    .font(ApexTheme.Typography.label)
+                    .foregroundStyle(ApexTheme.Colors.inkPrimary)
+
+                Spacer(minLength: ApexTheme.Spacing.small)
 
                 Text("\(Int(displayedPercent.rounded()))% \(modeLabel)")
-                    .font(.subheadline.weight(.semibold))
+                    .font(ApexTheme.Typography.metric)
+                    .foregroundStyle(gaugeColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
 
-                Spacer()
+            ProgressView(value: displayedPercent, total: 100)
+                .tint(gaugeColor)
+                .scaleEffect(x: 1, y: 1.5, anchor: .center)
+                .accessibilityLabel("\(kindAccessibilityLabel) quota \(modeLabel)")
+                .accessibilityValue("\(Int(displayedPercent.rounded())) percent")
 
-                if let resetsAt = window.resetsAt {
+            if let resetsAt = window.resetsAt {
+                Label {
                     Group {
                         if displayResetCountdown {
                             TimelineView(.periodic(from: .now, by: 60)) { context in
@@ -29,15 +39,27 @@ struct QuotaWindowRow: View {
                             Text(absoluteResetLabel(for: resetsAt))
                         }
                     }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                } icon: {
+                    Image(systemName: "clock.arrow.circlepath")
                 }
+                .font(ApexTheme.Typography.caption)
+                .foregroundStyle(ApexTheme.Colors.inkSecondary)
             }
-
-            ProgressView(value: displayedPercent, total: 100)
-                .tint(gaugeColor)
-                .accessibilityLabel("\(kindAccessibilityLabel) quota \(modeLabel)")
-                .accessibilityValue("\(Int(displayedPercent.rounded())) percent")
+        }
+        .padding(ApexTheme.Spacing.medium)
+        .background(
+            ApexTheme.Colors.surfaceRaised,
+            in: RoundedRectangle(
+                cornerRadius: ApexTheme.Radius.innerCard,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: ApexTheme.Radius.innerCard,
+                style: .continuous
+            )
+            .stroke(ApexTheme.Colors.border.opacity(0.8), lineWidth: 1)
         }
     }
 
@@ -97,9 +119,9 @@ struct QuotaWindowRow: View {
 
     private var gaugeColor: Color {
         switch clampedPercent {
-        case ..<20: .red
-        case ..<40: .orange
-        default: .green
+        case ..<25: ApexTheme.Colors.danger
+        case ..<50: ApexTheme.Colors.warning
+        default: ApexTheme.Colors.success
         }
     }
 }

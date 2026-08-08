@@ -20,13 +20,14 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
 
                 Text("Applies to every quota shown on this iPhone and the paired Apple Watch.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(ApexTheme.Typography.caption)
+                    .foregroundStyle(ApexTheme.Colors.inkSecondary)
             }
+            .apexListRow()
 
             Section("Data") {
                 Toggle(
-                    "Use Mock Data",
+                    "Use mock data",
                     isOn: Binding(
                         get: { viewModel.useMockData },
                         set: { viewModel.setUseMockData($0) }
@@ -35,12 +36,13 @@ struct SettingsView: View {
 
                 Text(
                     viewModel.useMockData
-                        ? "Shows realistic preview quotas without contacting providers."
-                        : "Live fetching will become available when the provider engine is integrated."
+                        ? "Shows representative quotas without contacting providers."
+                        : "Fetches current quotas using credentials stored on this iPhone."
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(ApexTheme.Typography.caption)
+                .foregroundStyle(ApexTheme.Colors.inkSecondary)
             }
+            .apexListRow()
 
             Section("Providers") {
                 NavigationLink("Claude") {
@@ -53,8 +55,12 @@ struct SettingsView: View {
                     KimiSettingsView(credentialStore: credentialStore)
                 }
             }
+            .apexListRow()
         }
+        .font(ApexTheme.Typography.body)
+        .apexFormStyle()
         .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
         .onChange(of: viewModel.useMockData) {
             Task { await viewModel.refresh() }
         }

@@ -95,19 +95,19 @@ struct QRConnectSection: View {
     @State private var scannerError: String?
 
     var body: some View {
-        Section("Scan QR (recommended)") {
+        Section("Scan QR — recommended") {
             ScrollView(.horizontal, showsIndicators: true) {
                 Text(command)
-                    .font(.system(.footnote, design: .monospaced))
+                    .font(ApexTheme.Typography.mono)
                     .fixedSize(horizontal: true, vertical: false)
                     .textSelection(.enabled)
                     .accessibilityLabel(command)
             }
             ScrollView(.horizontal, showsIndicators: true) {
                 Text("If you have the repo cloned: \(clonedRepoCommand)")
-                    .font(.footnote)
+                    .font(ApexTheme.Typography.caption)
                     .fixedSize(horizontal: true, vertical: false)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ApexTheme.Colors.inkSecondary)
                     .textSelection(.enabled)
             }
 
@@ -117,16 +117,17 @@ struct QRConnectSection: View {
                 Label("Scan QR from your Mac", systemImage: "qrcode.viewfinder")
             }
 
-            Text("The credential travels only through the QR image — never through iCloud or a network.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            Text("The credential travels through the QR image only — not through iCloud or a network.")
+                .font(ApexTheme.Typography.caption)
+                .foregroundStyle(ApexTheme.Colors.inkSecondary)
 
             if let scannerError {
                 Text(scannerError)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
+                    .font(ApexTheme.Typography.caption)
+                    .foregroundStyle(ApexTheme.Colors.danger)
             }
         }
+        .apexListRow()
         .sheet(isPresented: $isPresentingScanner) {
             NavigationStack {
                 QRScannerView(
@@ -150,8 +151,9 @@ struct QRConnectSection: View {
                     }
                 }
             }
+            .tint(ApexTheme.Colors.accent)
         }
-        .alert("Camera Access Required", isPresented: $showCameraDeniedAlert) {
+        .alert("Camera access required", isPresented: $showCameraDeniedAlert) {
             Button("Open Settings") {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     openURL(url)
@@ -159,7 +161,7 @@ struct QRConnectSection: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Allow camera access in Settings to scan the ApexGauge connect QR code, or use the paste fallback.")
+            Text("Allow camera access in Settings to scan the Apex Gauge connect QR code, or use the paste fallback.")
         }
     }
 
@@ -192,10 +194,10 @@ struct QRConnectSection: View {
 struct CredentialSecurityNote: View {
     var body: some View {
         Label(
-            "Paste uses the system pasteboard, which other apps can read — QR is more private. Credentials are stored only in this device's Keychain (never synced, never backed up).",
+            "QR avoids the system pasteboard. Credentials stay in this device's Keychain — they are not synced or backed up.",
             systemImage: "lock.shield"
         )
-        .font(.footnote)
-        .foregroundStyle(.secondary)
+        .font(ApexTheme.Typography.caption)
+        .foregroundStyle(ApexTheme.Colors.inkSecondary)
     }
 }

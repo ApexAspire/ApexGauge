@@ -20,13 +20,29 @@ struct ClaudeSettingsView: View {
             )
 
             Section("Paste fallback") {
-                Text("On your Mac: cat ~/.claude/.credentials.json, copy, paste here.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                Text("On your Mac, copy the contents of `~/.claude/.credentials.json` and paste them here.")
+                    .font(ApexTheme.Typography.caption)
+                    .foregroundStyle(ApexTheme.Colors.inkSecondary)
 
                 TextEditor(text: $pastedCredentials)
                     .frame(minHeight: 130)
-                    .font(.system(.footnote, design: .monospaced))
+                    .font(ApexTheme.Typography.mono)
+                    .scrollContentBackground(.hidden)
+                    .padding(ApexTheme.Spacing.small)
+                    .background(
+                        ApexTheme.Colors.surfaceRaised,
+                        in: RoundedRectangle(
+                            cornerRadius: ApexTheme.Radius.control,
+                            style: .continuous
+                        )
+                    )
+                    .overlay {
+                        RoundedRectangle(
+                            cornerRadius: ApexTheme.Radius.control,
+                            style: .continuous
+                        )
+                        .stroke(ApexTheme.Colors.border, lineWidth: 1)
+                    }
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .privacySensitive()
@@ -38,6 +54,7 @@ struct ClaudeSettingsView: View {
 
                 CredentialSecurityNote()
             }
+            .apexListRow()
 
             if isConnected {
                 Section {
@@ -46,16 +63,27 @@ struct ClaudeSettingsView: View {
                     }
                     .disabled(isWorking)
                 }
+                .apexListRow()
             }
 
             if let statusMessage {
                 Section {
-                    Text(statusMessage)
-                        .foregroundStyle(statusIsError ? .red : .green)
+                    Label(
+                        statusMessage,
+                        systemImage: statusIsError ? "exclamationmark.triangle" : "checkmark.circle"
+                    )
+                    .font(ApexTheme.Typography.compact)
+                    .foregroundStyle(
+                        statusIsError ? ApexTheme.Colors.danger : ApexTheme.Colors.success
+                    )
                 }
+                .apexListRow()
             }
         }
+        .font(ApexTheme.Typography.body)
+        .apexFormStyle()
         .navigationTitle("Claude")
+        .navigationBarTitleDisplayMode(.inline)
         .task { await loadConnectionState() }
     }
 

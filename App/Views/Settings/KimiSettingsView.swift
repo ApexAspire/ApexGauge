@@ -13,9 +13,10 @@ struct KimiSettingsView: View {
     var body: some View {
         Form {
             Section("How to connect") {
-                Text("Create an API key in the Kimi Code Console (https://www.kimi.com/code/console) and paste it here.")
+                Text("Create an API key in the Kimi Code Console, then paste it here.")
                 Link("Open Kimi Code Console", destination: URL(string: "https://www.kimi.com/code/console")!)
             }
+            .apexListRow()
 
             Section("API key") {
                 SecureField("Kimi API key", text: $apiKey)
@@ -24,6 +25,7 @@ struct KimiSettingsView: View {
 
                 CredentialSecurityNote()
             }
+            .apexListRow()
 
             Section {
                 Button("Connect") {
@@ -38,15 +40,26 @@ struct KimiSettingsView: View {
                     .disabled(isWorking)
                 }
             }
+            .apexListRow()
 
             if let statusMessage {
                 Section {
-                    Text(statusMessage)
-                        .foregroundStyle(statusIsError ? .red : .green)
+                    Label(
+                        statusMessage,
+                        systemImage: statusIsError ? "exclamationmark.triangle" : "checkmark.circle"
+                    )
+                    .font(ApexTheme.Typography.compact)
+                    .foregroundStyle(
+                        statusIsError ? ApexTheme.Colors.danger : ApexTheme.Colors.success
+                    )
                 }
+                .apexListRow()
             }
         }
+        .font(ApexTheme.Typography.body)
+        .apexFormStyle()
         .navigationTitle("Kimi")
+        .navigationBarTitleDisplayMode(.inline)
         .task { await loadConnectionState() }
     }
 

@@ -8,20 +8,27 @@ struct RootView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 16) {
+                LazyVStack(spacing: ApexTheme.Spacing.standard) {
+                    dashboardHeader
+
                     Toggle(
                         isOn: Binding(
                             get: { viewModel.displayResetCountdown },
                             set: { viewModel.setDisplayResetCountdown($0) }
                         )
                     ) {
-                        Label("Reset countdown", systemImage: "timer")
+                        VStack(alignment: .leading, spacing: ApexTheme.Spacing.xSmall) {
+                            Label("Reset countdown", systemImage: "timer")
+                                .font(ApexTheme.Typography.label)
+                                .foregroundStyle(ApexTheme.Colors.inkPrimary)
+                            Text("Show the time remaining instead of the reset date.")
+                                .font(ApexTheme.Typography.caption)
+                                .foregroundStyle(ApexTheme.Colors.inkSecondary)
+                        }
                     }
-                    .padding()
-                    .background(
-                        Color(uiColor: .secondarySystemGroupedBackground),
-                        in: RoundedRectangle(cornerRadius: 14)
-                    )
+                    .tint(ApexTheme.Colors.accent)
+                    .padding(ApexTheme.Spacing.standard)
+                    .apexSurface(cornerRadius: ApexTheme.Radius.innerCard, elevated: false)
 
                     if let persistenceError = viewModel.persistenceError {
                         ErrorBannerView(message: "Snapshot could not be saved: \(persistenceError)")
@@ -41,14 +48,22 @@ struct RootView: View {
                             )
                         }
                     } else {
-                        ProgressView("Loading usage…")
+                        ProgressView("Loading quota data…")
+                            .font(ApexTheme.Typography.body)
+                            .foregroundStyle(ApexTheme.Colors.inkSecondary)
+                            .tint(ApexTheme.Colors.accent)
                             .frame(maxWidth: .infinity, minHeight: 240)
                     }
                 }
-                .padding()
+                .padding(.horizontal, ApexTheme.Spacing.standard)
+                .padding(.vertical, ApexTheme.Spacing.large)
             }
-            .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("ApexGauge")
+            .background(ApexTheme.Colors.background)
+            .navigationTitle("Apex Gauge")
+            .navigationBarTitleDisplayMode(.inline)
+            .tint(ApexTheme.Colors.accent)
+            .toolbarBackground(ApexTheme.Colors.surface.opacity(0.96), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink {
@@ -80,5 +95,31 @@ struct RootView: View {
                 }
             }
         }
+    }
+
+    private var dashboardHeader: some View {
+        VStack(alignment: .leading, spacing: ApexTheme.Spacing.small) {
+            HStack(spacing: ApexTheme.Spacing.small) {
+                Rectangle()
+                    .fill(ApexTheme.Colors.inkTertiary)
+                    .frame(width: 24, height: 1)
+                Text("Usage overview")
+                    .font(ApexTheme.Typography.eyebrow)
+                    .textCase(.uppercase)
+                    .tracking(1.2)
+            }
+            .foregroundStyle(ApexTheme.Colors.inkTertiary)
+
+            Text("Quota position")
+                .font(ApexTheme.Typography.displayLarge)
+                .foregroundStyle(ApexTheme.Colors.inkPrimary)
+                .accessibilityAddTraits(.isHeader)
+
+            Text("Current allowance across each connected provider.")
+                .font(ApexTheme.Typography.body)
+                .foregroundStyle(ApexTheme.Colors.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

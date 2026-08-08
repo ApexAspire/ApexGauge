@@ -38,7 +38,7 @@ final class SnapshotChangeDetector {
 
         guard let fileURL else {
             throw CocoaError(.fileNoSuchFile, userInfo: [
-                NSLocalizedDescriptionKey: "The ApexGauge App Group container is unavailable.",
+                NSLocalizedDescriptionKey: "The Apex Gauge App Group container is unavailable.",
             ])
         }
 

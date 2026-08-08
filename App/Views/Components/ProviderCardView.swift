@@ -2,6 +2,8 @@ import ApexGaugeCore
 import SwiftUI
 
 struct ProviderCardView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let snapshot: ProviderSnapshot
     let displayPercentUsed: Bool
     let displayResetCountdown: Bool
@@ -10,45 +12,24 @@ struct ProviderCardView: View {
     let onRefresh: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label(providerName, systemImage: providerSymbol)
-                    .font(.headline)
-                Spacer()
-                Text(displayPercentUsed ? "used" : "left")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(.quaternary, in: Capsule())
-                Text("as of \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Button(action: onRefresh) {
-                    if isRefreshing {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                }
-                .buttonStyle(.borderless)
-                .frame(width: 24, height: 24)
-                .disabled(refreshDisabled || isRefreshing)
-                .accessibilityLabel("Refresh \(providerName)")
-            }
+        VStack(alignment: .leading, spacing: ApexTheme.Spacing.standard) {
+            header
 
             if snapshot.windows.isEmpty {
-                Text("No quota windows available")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Label("No quota data is available.", systemImage: "gauge.with.dots.needle.0percent")
+                    .font(ApexTheme.Typography.compact)
+                    .foregroundStyle(ApexTheme.Colors.inkSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, ApexTheme.Spacing.small)
             } else {
-                ForEach(Array(snapshot.windows.enumerated()), id: \.offset) { _, window in
-                    QuotaWindowRow(
-                        window: window,
-                        displayPercentUsed: displayPercentUsed,
-                        displayResetCountdown: displayResetCountdown
-                    )
+                VStack(spacing: ApexTheme.Spacing.small) {
+                    ForEach(Array(snapshot.windows.enumerated()), id: \.offset) { _, window in
+                        QuotaWindowRow(
+                            window: window,
+                            displayPercentUsed: displayPercentUsed,
+                            displayResetCountdown: displayResetCountdown
+                        )
+                    }
                 }
             }
 
@@ -56,12 +37,85 @@ struct ProviderCardView: View {
                 ErrorBannerView(message: error)
             }
         }
-        .padding()
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        .padding(ApexTheme.Spacing.standard)
+        .apexSurface(cornerRadius: ApexTheme.Radius.card)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(ApexTheme.Colors.accent)
+                .frame(height: 2)
+                .clipShape(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: ApexTheme.Radius.card,
+                        topTrailingRadius: ApexTheme.Radius.card
+                    )
+                )
         }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: ApexTheme.Spacing.small) {
+            if dynamicTypeSize.isAccessibilitySize {
+                providerTitle
+
+                HStack(spacing: ApexTheme.Spacing.medium) {
+                    modeChip
+                    Spacer(minLength: ApexTheme.Spacing.small)
+                    refreshButton
+                }
+            } else {
+                HStack(alignment: .center, spacing: ApexTheme.Spacing.medium) {
+                    providerTitle
+                    Spacer(minLength: ApexTheme.Spacing.small)
+                    modeChip
+                    refreshButton
+                }
+            }
+
+            Label(
+                "Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))",
+                systemImage: "clock"
+            )
+            .font(ApexTheme.Typography.caption)
+            .foregroundStyle(ApexTheme.Colors.inkSecondary)
+        }
+    }
+
+    private var providerTitle: some View {
+        Label(providerName, systemImage: providerSymbol)
+            .font(ApexTheme.Typography.displaySmall)
+            .foregroundStyle(ApexTheme.Colors.inkPrimary)
+            .symbolRenderingMode(.monochrome)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var modeChip: some View {
+        Text(displayPercentUsed ? "Used" : "Left")
+            .font(ApexTheme.Typography.eyebrow)
+            .textCase(.uppercase)
+            .tracking(0.8)
+            .foregroundStyle(ApexTheme.Colors.accent)
+            .padding(.horizontal, ApexTheme.Spacing.small)
+            .padding(.vertical, ApexTheme.Spacing.xSmall)
+            .background(ApexTheme.Colors.accentSoft, in: Capsule())
+    }
+
+    private var refreshButton: some View {
+        Button(action: onRefresh) {
+            Group {
+                if isRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                }
+            }
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(ApexTheme.Colors.accent)
+        .disabled(refreshDisabled || isRefreshing)
+        .accessibilityLabel("Refresh \(providerName)")
     }
 
     private var providerName: String {
