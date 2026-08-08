@@ -58,3 +58,11 @@ public struct UsageSnapshot: Codable, Sendable, Equatable {
         self.providers = providers
     }
 }
+
+/// Shared constants (coordinator-owned). The App Group ties the iOS app, watch
+/// app, and complication extension together; all targets must use these values.
+public enum ApexGaugeDefaults {
+    public static let appGroupID = "group.com.apex.apexgauge"
+    public static let snapshotFilename = "usage-snapshot.json"
+    public static let appBundleID = "com.apex.apexgauge"
+}
