@@ -36,3 +36,6 @@ docs/app-store/review-notes.md
 # Local agent session knowledge (may reference internal workflows)
 .project-log.md
 .codex/state/
+
+# Agent runtime state
+.claude/state/
