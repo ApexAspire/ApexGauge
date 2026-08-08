@@ -12,7 +12,7 @@ struct ProviderCardView: View {
     let onRefresh: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ApexTheme.Spacing.standard) {
+        VStack(alignment: .leading, spacing: ApexTheme.Spacing.small) {
             header
 
             if snapshot.windows.isEmpty {
@@ -22,7 +22,7 @@ struct ProviderCardView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, ApexTheme.Spacing.small)
             } else {
-                VStack(spacing: ApexTheme.Spacing.small) {
+                VStack(spacing: ApexTheme.Spacing.xSmall) {
                     ForEach(Array(snapshot.windows.enumerated()), id: \.offset) { _, window in
                         QuotaWindowRow(
                             window: window,
@@ -37,7 +37,8 @@ struct ProviderCardView: View {
                 ErrorBannerView(message: error)
             }
         }
-        .padding(ApexTheme.Spacing.standard)
+        .padding(.horizontal, ApexTheme.Spacing.medium)
+        .padding(.vertical, ApexTheme.Spacing.small)
         .apexSurface(cornerRadius: ApexTheme.Radius.card)
         .overlay(alignment: .top) {
             Rectangle()
@@ -53,31 +54,22 @@ struct ProviderCardView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: ApexTheme.Spacing.small) {
-            if dynamicTypeSize.isAccessibilitySize {
-                providerTitle
+        HStack(alignment: .center, spacing: ApexTheme.Spacing.small) {
+            providerTitle
 
-                HStack(spacing: ApexTheme.Spacing.medium) {
-                    modeChip
-                    Spacer(minLength: ApexTheme.Spacing.small)
-                    refreshButton
-                }
-            } else {
-                HStack(alignment: .center, spacing: ApexTheme.Spacing.medium) {
-                    providerTitle
-                    Spacer(minLength: ApexTheme.Spacing.small)
-                    modeChip
-                    refreshButton
-                }
+            if !dynamicTypeSize.isAccessibilitySize {
+                Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
+                    .font(ApexTheme.Typography.dataCaption)
+                    .foregroundStyle(ApexTheme.Colors.inkSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
 
-            Label(
-                "Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))",
-                systemImage: "clock"
-            )
-            .font(ApexTheme.Typography.caption)
-            .foregroundStyle(ApexTheme.Colors.inkSecondary)
+            Spacer(minLength: 0)
+            modeChip
+            refreshButton
         }
+        .frame(minHeight: 44)
     }
 
     private var providerTitle: some View {
@@ -85,7 +77,7 @@ struct ProviderCardView: View {
             .font(ApexTheme.Typography.displaySmall)
             .foregroundStyle(ApexTheme.Colors.inkPrimary)
             .symbolRenderingMode(.monochrome)
-            .fixedSize(horizontal: false, vertical: true)
+            .lineLimit(1)
     }
 
     private var modeChip: some View {
@@ -94,8 +86,8 @@ struct ProviderCardView: View {
             .textCase(.uppercase)
             .tracking(0.8)
             .foregroundStyle(ApexTheme.Colors.accent)
-            .padding(.horizontal, ApexTheme.Spacing.small)
-            .padding(.vertical, ApexTheme.Spacing.xSmall)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
             .background(ApexTheme.Colors.accentSoft, in: Capsule())
     }
 

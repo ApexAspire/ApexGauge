@@ -36,14 +36,15 @@ enum ApexTheme {
     enum Typography {
         static let displayLarge = Font.system(.largeTitle, design: .serif).weight(.regular)
         static let display = Font.system(.title, design: .serif).weight(.regular)
-        static let displaySmall = Font.system(.title2, design: .serif).weight(.semibold)
-        static let metric = Font.system(.title3, design: .serif).weight(.semibold)
+        static let displaySmall = Font.system(.headline, design: .rounded).weight(.semibold)
+        static let metric = Font.system(.subheadline, design: .rounded).weight(.semibold).monospacedDigit()
 
         static let bodyLarge = Font.system(.title3, design: .default).weight(.regular)
         static let body = Font.system(.body, design: .default).weight(.regular)
         static let label = Font.system(.subheadline, design: .default).weight(.semibold)
         static let compact = Font.system(.subheadline, design: .default).weight(.medium)
         static let caption = Font.system(.caption, design: .default).weight(.regular)
+        static let dataCaption = Font.system(.caption, design: .rounded).weight(.medium).monospacedDigit()
         static let eyebrow = Font.system(.caption2, design: .default).weight(.semibold)
         static let mono = Font.system(.footnote, design: .monospaced).weight(.regular)
     }

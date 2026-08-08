@@ -8,7 +8,7 @@ struct RootView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: ApexTheme.Spacing.standard) {
+                LazyVStack(spacing: ApexTheme.Spacing.small) {
                     dashboardHeader
 
                     Toggle(
@@ -17,17 +17,13 @@ struct RootView: View {
                             set: { viewModel.setDisplayResetCountdown($0) }
                         )
                     ) {
-                        VStack(alignment: .leading, spacing: ApexTheme.Spacing.xSmall) {
-                            Label("Reset countdown", systemImage: "timer")
-                                .font(ApexTheme.Typography.label)
-                                .foregroundStyle(ApexTheme.Colors.inkPrimary)
-                            Text("Show the time remaining instead of the reset date.")
-                                .font(ApexTheme.Typography.caption)
-                                .foregroundStyle(ApexTheme.Colors.inkSecondary)
-                        }
+                        Label("Reset countdown", systemImage: "timer")
+                            .font(ApexTheme.Typography.label)
+                            .foregroundStyle(ApexTheme.Colors.inkPrimary)
                     }
                     .tint(ApexTheme.Colors.accent)
-                    .padding(ApexTheme.Spacing.standard)
+                    .frame(minHeight: 44)
+                    .padding(.horizontal, ApexTheme.Spacing.medium)
                     .apexSurface(cornerRadius: ApexTheme.Radius.innerCard, elevated: false)
 
                     if let persistenceError = viewModel.persistenceError {
@@ -55,8 +51,8 @@ struct RootView: View {
                             .frame(maxWidth: .infinity, minHeight: 240)
                     }
                 }
-                .padding(.horizontal, ApexTheme.Spacing.standard)
-                .padding(.vertical, ApexTheme.Spacing.large)
+                .padding(.horizontal, ApexTheme.Spacing.medium)
+                .padding(.vertical, ApexTheme.Spacing.small)
             }
             .background(ApexTheme.Colors.background)
             .navigationTitle("Apex Gauge")
@@ -98,27 +94,16 @@ struct RootView: View {
     }
 
     private var dashboardHeader: some View {
-        VStack(alignment: .leading, spacing: ApexTheme.Spacing.small) {
-            HStack(spacing: ApexTheme.Spacing.small) {
-                Rectangle()
-                    .fill(ApexTheme.Colors.inkTertiary)
-                    .frame(width: 24, height: 1)
-                Text("Usage overview")
-                    .font(ApexTheme.Typography.eyebrow)
-                    .textCase(.uppercase)
-                    .tracking(1.2)
-            }
-            .foregroundStyle(ApexTheme.Colors.inkTertiary)
-
+        VStack(alignment: .leading, spacing: ApexTheme.Spacing.xSmall) {
             Text("Quota position")
-                .font(ApexTheme.Typography.displayLarge)
+                .font(ApexTheme.Typography.display)
                 .foregroundStyle(ApexTheme.Colors.inkPrimary)
                 .accessibilityAddTraits(.isHeader)
 
             Text("Current allowance across each connected provider.")
-                .font(ApexTheme.Typography.body)
+                .font(ApexTheme.Typography.caption)
                 .foregroundStyle(ApexTheme.Colors.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
