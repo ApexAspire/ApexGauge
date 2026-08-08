@@ -8,12 +8,56 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* ApexGaugeCore in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000002 /* ApexGaugeCore */; };
+		A20000000000000000000001 /* ApexGaugeCore in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000002 /* ApexGaugeCore */; };
+		A2000000000000000000000D /* ApexGaugeWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* ApexGaugeWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A2000000000000000000000E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A1000000000000000000000C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A20000000000000000000006;
+			remoteInfo = ApexGaugeWatch;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A2000000000000000000000C /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				A2000000000000000000000D /* ApexGaugeWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A20000000000000000000010 /* Exceptions for "App" folder in "ApexGauge" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A10000000000000000000008 /* ApexGauge */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A10000000000000000000003 /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A20000000000000000000010 /* Exceptions for "App" folder in "ApexGauge" target */,
+			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		A20000000000000000000003 /* Watch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Watch;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -27,6 +71,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A20000000000000000000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A20000000000000000000001 /* ApexGaugeCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -34,6 +86,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000003 /* App */,
+				A20000000000000000000003 /* Watch */,
 				A10000000000000000000006 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -42,6 +95,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000007 /* ApexGauge.app */,
+				A20000000000000000000005 /* ApexGaugeWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -56,10 +110,12 @@
 				A1000000000000000000000A /* Sources */,
 				A10000000000000000000004 /* Frameworks */,
 				A1000000000000000000000B /* Resources */,
+				A2000000000000000000000C /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A2000000000000000000000F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A10000000000000000000003 /* App */,
@@ -70,6 +126,29 @@
 			);
 			productName = ApexGauge;
 			productReference = A10000000000000000000007 /* ApexGauge.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A20000000000000000000006 /* ApexGaugeWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A20000000000000000000007 /* Build configuration list for PBXNativeTarget "ApexGaugeWatch" */;
+			buildPhases = (
+				A20000000000000000000008 /* Sources */,
+				A20000000000000000000004 /* Frameworks */,
+				A20000000000000000000009 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A20000000000000000000003 /* Watch */,
+			);
+			name = ApexGaugeWatch;
+			packageProductDependencies = (
+				A20000000000000000000002 /* ApexGaugeCore */,
+			);
+			productName = ApexGaugeWatch;
+			productReference = A20000000000000000000005 /* ApexGaugeWatch.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -83,6 +162,9 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					A10000000000000000000008 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					A20000000000000000000006 = {
 						CreatedOnToolsVersion = 16.0;
 					};
 				};
@@ -105,12 +187,20 @@
 			projectRoot = "";
 			targets = (
 				A10000000000000000000008 /* ApexGauge */,
+				A20000000000000000000006 /* ApexGaugeWatch */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		A1000000000000000000000B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A20000000000000000000009 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -127,11 +217,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A20000000000000000000008 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000007 /* ApexGauge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ApexGauge.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000005 /* ApexGaugeWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ApexGaugeWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXTargetDependency section */
+		A2000000000000000000000F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A20000000000000000000006 /* ApexGaugeWatch */;
+			targetProxy = A2000000000000000000000E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A1000000000000000000000F /* Debug */ = {
@@ -256,6 +362,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -284,6 +391,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -301,6 +409,67 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A2000000000000000000000A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Watch/ApexGaugeWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ApexGauge;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.apex.apexgauge;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.apex.apexgauge.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
+		};
+		A2000000000000000000000B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Watch/ApexGaugeWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ApexGauge;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.apex.apexgauge;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.apex.apexgauge.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Release;
 		};
@@ -325,6 +494,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		A20000000000000000000007 /* Build configuration list for PBXNativeTarget "ApexGaugeWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A2000000000000000000000A /* Debug */,
+				A2000000000000000000000B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -336,6 +514,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		A10000000000000000000002 /* ApexGaugeCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ApexGaugeCore;
+		};
+		A20000000000000000000002 /* ApexGaugeCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ApexGaugeCore;
 		};
