@@ -4,6 +4,10 @@ import SwiftUI
 struct ProviderCardView: View {
     let snapshot: ProviderSnapshot
     let displayPercentUsed: Bool
+    let displayResetCountdown: Bool
+    let isRefreshing: Bool
+    let refreshDisabled: Bool
+    let onRefresh: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -20,6 +24,18 @@ struct ProviderCardView: View {
                 Text("as of \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Button(action: onRefresh) {
+                    if isRefreshing {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+                .buttonStyle(.borderless)
+                .frame(width: 24, height: 24)
+                .disabled(refreshDisabled || isRefreshing)
+                .accessibilityLabel("Refresh \(providerName)")
             }
 
             if snapshot.windows.isEmpty {
@@ -28,7 +44,11 @@ struct ProviderCardView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(Array(snapshot.windows.enumerated()), id: \.offset) { _, window in
-                    QuotaWindowRow(window: window, displayPercentUsed: displayPercentUsed)
+                    QuotaWindowRow(
+                        window: window,
+                        displayPercentUsed: displayPercentUsed,
+                        displayResetCountdown: displayResetCountdown
+                    )
                 }
             }
 

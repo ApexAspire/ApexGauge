@@ -9,6 +9,20 @@ struct RootView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 16) {
+                    Toggle(
+                        isOn: Binding(
+                            get: { viewModel.displayResetCountdown },
+                            set: { viewModel.setDisplayResetCountdown($0) }
+                        )
+                    ) {
+                        Label("Reset countdown", systemImage: "timer")
+                    }
+                    .padding()
+                    .background(
+                        Color(uiColor: .secondarySystemGroupedBackground),
+                        in: RoundedRectangle(cornerRadius: 14)
+                    )
+
                     if let persistenceError = viewModel.persistenceError {
                         ErrorBannerView(message: "Snapshot could not be saved: \(persistenceError)")
                     }
@@ -17,7 +31,13 @@ struct RootView: View {
                         ForEach(snapshot.providers, id: \.provider) { provider in
                             ProviderCardView(
                                 snapshot: provider,
-                                displayPercentUsed: viewModel.displayPercentUsed
+                                displayPercentUsed: viewModel.displayPercentUsed,
+                                displayResetCountdown: viewModel.displayResetCountdown,
+                                isRefreshing: viewModel.isRefreshing(provider: provider.provider),
+                                refreshDisabled: viewModel.isRefreshing,
+                                onRefresh: {
+                                    Task { await viewModel.refresh(provider: provider.provider) }
+                                }
                             )
                         }
                     } else {
@@ -48,7 +68,7 @@ struct RootView: View {
                             Label("Refresh", systemImage: "arrow.clockwise")
                         }
                     }
-                    .disabled(viewModel.isRefreshing)
+                    .disabled(viewModel.isRefreshing || viewModel.isRefreshingAnyProvider)
                 }
             }
             .refreshable {

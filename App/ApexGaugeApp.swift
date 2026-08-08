@@ -11,15 +11,16 @@ struct ApexGaugeApp: App {
         UserDefaults.standard.register(defaults: [
             UsageViewModel.useMockDataKey: true,
             ApexGaugeDefaults.displayPercentUsedKey: true,
+            UsageViewModel.displayResetCountdownKey: false,
         ])
 
         let credentialStore = KeychainCredentialStore()
         self.credentialStore = credentialStore
-        let liveEngine = UsageEngine(
-            claude: ClaudeUsageFetcher(store: credentialStore),
-            codex: CodexUsageFetcher(store: credentialStore),
-            kimi: KimiUsageFetcher(store: credentialStore)
-        )
+        let claudeFetcher = ClaudeUsageFetcher(store: credentialStore)
+        let codexFetcher = CodexUsageFetcher(store: credentialStore)
+        let kimiFetcher = KimiUsageFetcher(store: credentialStore)
+        let liveFetchers: [any UsageFetching] = [claudeFetcher, codexFetcher, kimiFetcher]
+        let liveEngine = UsageEngine(claude: claudeFetcher, codex: codexFetcher, kimi: kimiFetcher)
         let snapshotStore = SnapshotStore()
         let connectivity = PhoneConnectivityManager()
         self.connectivity = connectivity
@@ -40,6 +41,7 @@ struct ApexGaugeApp: App {
             wrappedValue: UsageViewModel(
                 mockEngine: MockUsageEngine(),
                 liveEngine: liveEngine,
+                liveFetchers: liveFetchers,
                 snapshotStore: snapshotStore,
                 connectivity: connectivity,
                 changeDetector: changeDetector
