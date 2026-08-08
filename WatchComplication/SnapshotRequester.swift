@@ -70,6 +70,12 @@ final class ComplicationSnapshotRequester: NSObject, WCSessionDelegate, @uncheck
             WidgetCenter.shared.reloadAllTimelines()
         }
 
+        if let data = payload[ApexGaugeDefaults.complicationHiddenProvidersKey] as? Data {
+            let defaults = UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)
+            defaults?.set(data, forKey: ApexGaugeDefaults.complicationHiddenProvidersKey)
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+
         if let displayPercentUsed = payload[ApexGaugeDefaults.watchDisplayModePayloadKey] as? Bool {
             let defaults = UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)
             defaults?.set(displayPercentUsed, forKey: ApexGaugeDefaults.displayPercentUsedKey)

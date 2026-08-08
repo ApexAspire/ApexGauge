@@ -149,6 +149,17 @@ final class SnapshotRequester: NSObject, ObservableObject {
                 self?.receive(complicationWindows: data)
             }
         }
+
+        if let data = payload[ApexGaugeDefaults.complicationHiddenProvidersKey] as? Data {
+            Task { @MainActor [weak self] in
+                self?.receive(complicationHiddenProviders: data)
+            }
+        }
+    }
+
+    private func receive(complicationHiddenProviders data: Data) {
+        sharedDefaults?.set(data, forKey: ApexGaugeDefaults.complicationHiddenProvidersKey)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func receive(complicationWindows data: Data) {

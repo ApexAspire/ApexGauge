@@ -132,9 +132,13 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
         }
     }
 
-    func pushComplicationWindows(_ prefs: [ProviderSnapshot.Provider: ComplicationWindowChoice]) {
+    func pushComplicationWindows(
+        _ prefs: [ProviderSnapshot.Provider: ComplicationWindowChoice],
+        hidden: Set<ProviderSnapshot.Provider>
+    ) {
         guard let session, session.activationState == .activated,
-              let data = ComplicationWindowPreferences.encode(prefs)
+              let data = ComplicationWindowPreferences.encode(prefs),
+              let hiddenData = ComplicationWindowPreferences.encodeHidden(hidden)
         else {
             lastPushDescription = "WatchConnectivity not activated yet"
             return
@@ -143,6 +147,7 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
         do {
             try session.updateApplicationContext([
                 ApexGaugeDefaults.complicationWindowsKey: data,
+                ApexGaugeDefaults.complicationHiddenProvidersKey: hiddenData,
             ])
             lastPushDescription = "complication preferences sent"
         } catch {

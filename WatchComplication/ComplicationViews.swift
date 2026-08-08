@@ -35,15 +35,27 @@ struct ApexGaugeCircularComplication: Widget {
 private struct RectangularComplicationView: View {
     let entry: ComplicationEntry
 
+    private var visibleProviders: [ProviderSnapshot.Provider] {
+        ProviderSnapshot.Provider.allCases.filter { !entry.hiddenProviders.contains($0) }
+    }
+
     var body: some View {
         Group {
             if let snapshot = entry.snapshot, !snapshot.providers.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    ProviderRowView(provider: .claude, snapshot: snapshot.provider(.claude), entry: entry)
-                    ProviderRowView(provider: .codex, snapshot: snapshot.provider(.codex), entry: entry)
-                    ProviderRowView(provider: .kimi, snapshot: snapshot.provider(.kimi), entry: entry)
+                if visibleProviders.isEmpty {
+                    Text("All providers hidden")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(visibleProviders, id: \.self) { provider in
+                            ProviderRowView(provider: provider, snapshot: snapshot.provider(provider), entry: entry)
+                                .frame(maxHeight: .infinity)
+                        }
+                    }
+                    .frame(maxHeight: .infinity)
                 }
-                .frame(maxHeight: .infinity)
             } else {
                 VStack(spacing: 2) {
                     Image(systemName: "iphone.and.arrow.forward")
@@ -259,15 +271,6 @@ extension ProviderSnapshot.Provider {
         case .claude: "sparkles"
         case .codex: "terminal"
         case .kimi: "moon.stars"
-        }
-    }
-
-    /// Brand-tinted symbol colour (bars carry the RAG meaning instead).
-    var brandTint: Color {
-        switch self {
-        case .claude: Color(red: 0.85, green: 0.47, blue: 0.34) // Anthropic coral
-        case .codex: .white
-        case .kimi: Color(red: 0.42, green: 0.58, blue: 1.0)
         }
     }
 }

@@ -11,12 +11,22 @@ struct ContentView: View {
                     ForEach(snapshot.providers.indices, id: \.self) { index in
                         let provider = snapshot.providers[index]
 
-                        Section(providerName(provider.provider)) {
+                        Section {
                             ForEach(sortedWindows(provider.windows).indices, id: \.self) { windowIndex in
                                 WindowRow(
                                     window: sortedWindows(provider.windows)[windowIndex],
                                     displayPercentUsed: snapshotRequester.displayPercentUsed
                                 )
+                            }
+                        } header: {
+                            Label {
+                                Text(providerName(provider.provider))
+                            } icon: {
+                                Image(provider.provider.rawValue)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .foregroundStyle(provider.provider.brandTint)
+                                    .frame(width: 14, height: 14)
                             }
                         }
                     }

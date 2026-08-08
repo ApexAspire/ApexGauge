@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "ApexGauge",
-    platforms: [.iOS(.v17), .watchOS(.v11)],
+    platforms: [.iOS(.v17), .watchOS(.v11), .macOS(.v14)],
     products: [
         .library(name: "ApexGaugeCore", targets: ["ApexGaugeCore"]),
     ],

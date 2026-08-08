@@ -57,20 +57,43 @@ struct SettingsView: View {
 
             Section("Complication") {
                 ForEach(ProviderSnapshot.Provider.allCases, id: \.self) { provider in
-                    Picker(
-                        provider.displayName,
-                        selection: Binding(
-                            get: { viewModel.complicationWindows[provider] ?? .weekly },
-                            set: { viewModel.setComplicationWindow($0, for: provider) }
-                        )
-                    ) {
-                        ForEach(ComplicationWindowChoice.allCases, id: \.self) { choice in
-                            Text(choice.displayName).tag(choice)
+                    let isShown = !viewModel.complicationHiddenProviders.contains(provider)
+                    VStack(alignment: .leading, spacing: ApexTheme.Spacing.xSmall) {
+                        Toggle(
+                            isOn: Binding(
+                                get: { isShown },
+                                set: { viewModel.setComplicationProviderHidden(!$0, provider: provider) }
+                            )
+                        ) {
+                            Label {
+                                Text(provider.displayName)
+                            } icon: {
+                                Image(provider.rawValue)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .foregroundStyle(provider.brandTint)
+                                    .frame(width: 16, height: 16)
+                            }
+                        }
+
+                        if isShown {
+                            Picker(
+                                "Second bar",
+                                selection: Binding(
+                                    get: { viewModel.complicationWindows[provider] ?? .weekly },
+                                    set: { viewModel.setComplicationWindow($0, for: provider) }
+                                )
+                            ) {
+                                ForEach(ComplicationWindowChoice.allCases, id: \.self) { choice in
+                                    Text(choice.displayName).tag(choice)
+                                }
+                            }
+                            .font(ApexTheme.Typography.caption)
                         }
                     }
                 }
 
-                Text("Each provider row on the watch shows Session on the left and your pick on the right. “Lowest” tracks whichever non-session window is closest to exhaustion; if a provider has no such window, the lowest shows.")
+                Text("Choose which providers appear on the watch complication, and each visible row's second bar (Session always leads). “Lowest” tracks whichever non-session window is closest to exhaustion.")
                     .font(ApexTheme.Typography.caption)
                     .foregroundStyle(ApexTheme.Colors.inkSecondary)
             }

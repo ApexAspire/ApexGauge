@@ -79,6 +79,7 @@ struct ProviderCardView: View {
             Image(snapshot.provider.rawValue)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
+                .foregroundStyle(snapshot.provider.brandTint)
                 .frame(width: 20, height: 20)
         }
             .font(ApexTheme.Typography.displaySmall)

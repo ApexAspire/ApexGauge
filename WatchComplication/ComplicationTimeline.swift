@@ -7,17 +7,20 @@ struct ComplicationEntry: TimelineEntry {
     let snapshot: UsageSnapshot?
     let displayPercentUsed: Bool
     let windowChoices: [ProviderSnapshot.Provider: ComplicationWindowChoice]
+    let hiddenProviders: Set<ProviderSnapshot.Provider>
 
     init(
         date: Date,
         snapshot: UsageSnapshot?,
         displayPercentUsed: Bool = true,
-        windowChoices: [ProviderSnapshot.Provider: ComplicationWindowChoice] = [:]
+        windowChoices: [ProviderSnapshot.Provider: ComplicationWindowChoice] = [:],
+        hiddenProviders: Set<ProviderSnapshot.Provider> = []
     ) {
         self.date = date
         self.snapshot = snapshot
         self.displayPercentUsed = displayPercentUsed
         self.windowChoices = windowChoices
+        self.hiddenProviders = hiddenProviders
     }
 
     var oldestFetchedAt: Date? {
@@ -54,13 +57,13 @@ struct ComplicationTimelineProvider: TimelineProvider {
     }
 
     private func entry(at date: Date) -> ComplicationEntry {
-        ComplicationEntry(
+        let defaults = UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)
+        return ComplicationEntry(
             date: date,
             snapshot: CachedSnapshotReader.load(),
             displayPercentUsed: DisplayPreferenceReader.load(),
-            windowChoices: ComplicationWindowPreferences.decode(
-                from: UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)
-            )
+            windowChoices: ComplicationWindowPreferences.decode(from: defaults),
+            hiddenProviders: ComplicationWindowPreferences.decodeHidden(from: defaults)
         )
     }
 

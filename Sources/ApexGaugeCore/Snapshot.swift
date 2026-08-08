@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// A single quota window (e.g. Claude 5-hour session, Kimi weekly).
 /// Values are 0...100 **remaining** percentages as shown on the complication.
@@ -31,6 +32,16 @@ public struct ProviderSnapshot: Codable, Sendable, Equatable {
             case .claude: "Claude"
             case .codex: "Codex"
             case .kimi: "Kimi"
+            }
+        }
+
+        /// Brand tint for the provider icon (the vendored CodexBar icons are
+        /// monochrome currentColor/white SVGs designed to be tinted).
+        public var brandTint: Color {
+            switch self {
+            case .claude: Color(red: 0.85, green: 0.47, blue: 0.34) // Anthropic coral
+            case .codex: .primary // OpenAI mark is monochrome; adapts light/dark
+            case .kimi: Color(red: 0.42, green: 0.58, blue: 1.0)
             }
         }
     }
@@ -109,6 +120,10 @@ public enum ApexGaugeDefaults {
     /// complication window preferences (JSON of [String: String], provider
     /// rawValue → ComplicationWindowChoice rawValue).
     public static let complicationWindowsKey = "ComplicationWindows"
+
+    /// WatchConnectivity payload key + UserDefaults key carrying the set of
+    /// providers hidden from the complication (JSON of [String]).
+    public static let complicationHiddenProvidersKey = "ComplicationHiddenProviders"
 }
 
 /// Which quota window a provider's complication row shows. `.lowest` (default)
@@ -166,5 +181,20 @@ public enum ComplicationWindowPreferences {
 
     public static func store(_ prefs: [ProviderSnapshot.Provider: ComplicationWindowChoice], in defaults: UserDefaults?) {
         defaults?.set(encode(prefs), forKey: ApexGaugeDefaults.complicationWindowsKey)
+    }
+
+    public static func decodeHidden(from defaults: UserDefaults?) -> Set<ProviderSnapshot.Provider> {
+        guard let data = defaults?.data(forKey: ApexGaugeDefaults.complicationHiddenProvidersKey),
+              let raw = try? JSONDecoder().decode([String].self, from: data)
+        else { return [] }
+        return Set(raw.compactMap(ProviderSnapshot.Provider.init(rawValue:)))
+    }
+
+    public static func encodeHidden(_ hidden: Set<ProviderSnapshot.Provider>) -> Data? {
+        try? JSONEncoder().encode(hidden.map(\.rawValue).sorted())
+    }
+
+    public static func storeHidden(_ hidden: Set<ProviderSnapshot.Provider>, in defaults: UserDefaults?) {
+        defaults?.set(encodeHidden(hidden), forKey: ApexGaugeDefaults.complicationHiddenProvidersKey)
     }
 }
