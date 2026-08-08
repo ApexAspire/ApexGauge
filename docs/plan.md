@@ -6,7 +6,7 @@
 
 ## Investigation findings (evidence base)
 
-### Data sources (from `/Users/petersmini/Projects/CodexBar` source + web research)
+### Data sources (from `CodexBar (github.com/steipete)` source + web research)
 
 | Provider | Endpoint | Auth | Notes |
 |---|---|---|---|

@@ -14,6 +14,13 @@ xcuserdata/
 # Secrets — credentials are never committed (iOS Keychain / paste-onboarding only)
 *.credentials.json
 auth.json
+.env
+.env.*
+!.env.example
+*.mobileprovision
+*.p8
+*.p12
+*.pem
 
 # xcodebuild local output
 build/
