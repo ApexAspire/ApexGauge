@@ -23,7 +23,7 @@ struct ProviderCardView: View {
                     .padding(.vertical, ApexTheme.Spacing.small)
             } else {
                 VStack(spacing: ApexTheme.Spacing.xSmall) {
-                    ForEach(Array(snapshot.windows.enumerated()), id: \.offset) { _, window in
+                    ForEach(sortedWindows, id: \.offset) { _, window in
                         QuotaWindowRow(
                             window: window,
                             displayPercentUsed: displayPercentUsed,
@@ -123,6 +123,29 @@ struct ProviderCardView: View {
         case .claude: "sparkles"
         case .codex: "terminal"
         case .kimi: "moon.stars"
+        }
+    }
+
+    private var sortedWindows: [(offset: Int, element: QuotaWindow)] {
+        snapshot.windows.enumerated().sorted { lhs, rhs in
+            let lhsOrder = lhs.element.kind.sortOrder
+            let rhsOrder = rhs.element.kind.sortOrder
+
+            if lhsOrder == rhsOrder {
+                return lhs.offset < rhs.offset
+            }
+            return lhsOrder < rhsOrder
+        }
+    }
+}
+
+private extension QuotaWindow.Kind {
+    var sortOrder: Int {
+        switch self {
+        case .session: 0
+        case .weekly: 1
+        case .fable: 2
+        case .other: 3
         }
     }
 }
