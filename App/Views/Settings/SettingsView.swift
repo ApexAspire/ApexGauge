@@ -60,7 +60,7 @@ struct SettingsView: View {
                     Picker(
                         provider.displayName,
                         selection: Binding(
-                            get: { viewModel.complicationWindows[provider] ?? .lowest },
+                            get: { viewModel.complicationWindows[provider] ?? .weekly },
                             set: { viewModel.setComplicationWindow($0, for: provider) }
                         )
                     ) {
@@ -70,7 +70,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Text("The watch complication shows one bar per provider — pick which quota window each bar tracks. “Lowest” follows whichever window is closest to exhaustion; if a provider has no such window, the lowest shows.")
+                Text("Each provider row on the watch shows Session on the left and your pick on the right. “Lowest” tracks whichever non-session window is closest to exhaustion; if a provider has no such window, the lowest shows.")
                     .font(ApexTheme.Typography.caption)
                     .foregroundStyle(ApexTheme.Colors.inkSecondary)
             }
