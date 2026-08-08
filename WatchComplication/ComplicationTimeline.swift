@@ -31,7 +31,9 @@ struct ComplicationTimelineProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (ComplicationEntry) -> Void) {
-        completion(entry(at: Date()))
+        let entry = entry(at: Date())
+        requestRefreshIfNeeded(for: entry.snapshot)
+        completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ComplicationEntry>) -> Void) {
@@ -40,6 +42,7 @@ struct ComplicationTimelineProvider: TimelineProvider {
             entries: [entry(at: now)],
             policy: .after(now.addingTimeInterval(refreshInterval))
         )
+        requestRefreshIfNeeded(for: timeline.entries.first?.snapshot)
         completion(timeline)
     }
 
@@ -49,6 +52,24 @@ struct ComplicationTimelineProvider: TimelineProvider {
             snapshot: CachedSnapshotReader.load(),
             displayPercentUsed: DisplayPreferenceReader.load()
         )
+    }
+
+    private func requestRefreshIfNeeded(for snapshot: UsageSnapshot?) {
+        guard SnapshotFreshness.needsRefresh(snapshot) else { return }
+
+        // Do not extend timeline generation for session activation or a reply.
+        Task {
+            ComplicationSnapshotRequester.shared.requestSnapshot()
+        }
+    }
+}
+
+private enum SnapshotFreshness {
+    static func needsRefresh(_ snapshot: UsageSnapshot?, now: Date = Date()) -> Bool {
+        guard let oldestFetchedAt = snapshot?.providers.map(\.fetchedAt).min() else {
+            return true
+        }
+        return now.timeIntervalSince(oldestFetchedAt) > ApexGaugeDefaults.staleAfter / 3
     }
 }
 

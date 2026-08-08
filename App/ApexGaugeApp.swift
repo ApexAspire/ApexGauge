@@ -1,5 +1,12 @@
 import ApexGaugeCore
+import Foundation
 import SwiftUI
+
+private enum RefreshInvocation {
+    /// An explicit watch request owns its transfer and must not be filtered by
+    /// the budgeted background change detector inside the shared pipeline.
+    @TaskLocal static var isExplicitWatchRequest = false
+}
 
 @main
 struct ApexGaugeApp: App {
@@ -22,20 +29,35 @@ struct ApexGaugeApp: App {
         let liveFetchers: [any UsageFetching] = [claudeFetcher, codexFetcher, kimiFetcher]
         let liveEngine = UsageEngine(claude: claudeFetcher, codex: codexFetcher, kimi: kimiFetcher)
         let snapshotStore = SnapshotStore()
-        let connectivity = PhoneConnectivityManager()
-        self.connectivity = connectivity
-        connectivity.activate()
-
-        // Background refresh: re-fetch quotas, persist, and push to the watch.
         let changeDetector = SnapshotChangeDetector()
-        RefreshScheduler.register {
+        let connectivity = PhoneConnectivityManager(changeDetector: changeDetector)
+        self.connectivity = connectivity
+
+        // Shared refresh pipeline for scheduled and watch-initiated refreshes.
+        let performRefresh: @Sendable () async -> UsageSnapshot = {
             let snapshot = await liveEngine.refreshAll()
             try? await snapshotStore.save(snapshot)
-            if changeDetector.shouldPush(snapshot),
+            if !RefreshInvocation.isExplicitWatchRequest,
+               changeDetector.shouldPush(snapshot),
                await connectivity.push(snapshot)
             {
                 try? changeDetector.recordPush(snapshot)
             }
+            return snapshot
+        }
+
+        // Install the background-launch request handler before activation, so
+        // the first message cannot arrive without a refresh path ready.
+        connectivity.snapshotRequestHandler = {
+            let snapshot = await RefreshInvocation.$isExplicitWatchRequest.withValue(true) {
+                await performRefresh()
+            }
+            return try? JSONEncoder().encode(snapshot)
+        }
+        connectivity.activate()
+
+        RefreshScheduler.register {
+            _ = await performRefresh()
         }
         RefreshScheduler.scheduleNext()
 

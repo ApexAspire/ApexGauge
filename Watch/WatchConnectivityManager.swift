@@ -5,7 +5,7 @@ import WatchConnectivity
 import WidgetKit
 
 @MainActor
-final class WatchConnectivityManager: NSObject, ObservableObject {
+final class SnapshotRequester: NSObject, ObservableObject {
     @Published private(set) var snapshot: UsageSnapshot?
     @Published private(set) var displayPercentUsed: Bool
     @Published private(set) var persistenceError: String?
@@ -13,6 +13,8 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
     private let snapshotStore: WatchSnapshotStore
     private let sharedDefaults: UserDefaults?
     private var isActivated = false
+    private var hasPendingSnapshotRequest = false
+    private var isSnapshotRequestInFlight = false
 
     init(
         snapshotStore: WatchSnapshotStore = WatchSnapshotStore(),
@@ -41,6 +43,30 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
         session.activate()
     }
 
+    /// Requests a fresh phone-side fetch only when the shared cache is missing
+    /// or more than one-third of the rendered stale threshold old (~15 min).
+    func requestSnapshotIfStale() async {
+        guard !isSnapshotRequestInFlight else { return }
+
+        let persistedSnapshot: UsageSnapshot?
+        do {
+            persistedSnapshot = try await snapshotStore.load()
+            snapshot = persistedSnapshot
+            persistenceError = nil
+        } catch {
+            persistedSnapshot = snapshot
+            persistenceError = error.localizedDescription
+        }
+
+        guard Self.needsRefresh(persistedSnapshot) else {
+            return
+        }
+
+        hasPendingSnapshotRequest = true
+        activate()
+        sendPendingSnapshotRequestIfPossible()
+    }
+
     private func loadPersistedSnapshot() async {
         do {
             snapshot = try await snapshotStore.load()
@@ -67,6 +93,43 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
+    private static func needsRefresh(_ snapshot: UsageSnapshot?, now: Date = Date()) -> Bool {
+        guard let oldestFetchedAt = snapshot?.providers.map(\.fetchedAt).min() else {
+            return true
+        }
+        return now.timeIntervalSince(oldestFetchedAt) > ApexGaugeDefaults.staleAfter / 3
+    }
+
+    private func sendPendingSnapshotRequestIfPossible() {
+        guard hasPendingSnapshotRequest else { return }
+
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+
+        hasPendingSnapshotRequest = false
+        guard session.isReachable else {
+            return
+        }
+        isSnapshotRequestInFlight = true
+
+        session.sendMessage(
+            [ApexGaugeDefaults.watchSnapshotRequestKey: true],
+            replyHandler: { [weak self] payload in
+                self?.receivePayload(payload)
+                Task { @MainActor [weak self] in
+                    self?.isSnapshotRequestInFlight = false
+                }
+            },
+            errorHandler: { [weak self] _ in
+                // Cached data remains visible; the next foreground/timeline
+                // budget cycle will retry if it is still stale.
+                Task { @MainActor [weak self] in
+                    self?.isSnapshotRequestInFlight = false
+                }
+            }
+        )
+    }
+
     nonisolated private func receivePayload(_ payload: [String: Any]) {
         if let data = payload[ApexGaugeDefaults.watchSnapshotPayloadKey] as? Data,
            let snapshot = try? JSONDecoder().decode(UsageSnapshot.self, from: data) {
@@ -83,12 +146,17 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
     }
 }
 
-extension WatchConnectivityManager: WCSessionDelegate {
+extension SnapshotRequester: WCSessionDelegate {
     nonisolated func session(
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: (any Error)?
-    ) {}
+    ) {
+        guard activationState == .activated, error == nil else { return }
+        Task { @MainActor [weak self] in
+            self?.sendPendingSnapshotRequestIfPossible()
+        }
+    }
 
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
         receivePayload(userInfo)

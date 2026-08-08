@@ -2,11 +2,11 @@ import ApexGaugeCore
 import SwiftUI
 
 struct ContentView: View {
-    @ObservedObject var connectivityManager: WatchConnectivityManager
+    @ObservedObject var snapshotRequester: SnapshotRequester
 
     var body: some View {
         Group {
-            if let snapshot = connectivityManager.snapshot, !snapshot.providers.isEmpty {
+            if let snapshot = snapshotRequester.snapshot, !snapshot.providers.isEmpty {
                 List {
                     ForEach(snapshot.providers.indices, id: \.self) { index in
                         let provider = snapshot.providers[index]
@@ -22,7 +22,7 @@ struct ContentView: View {
                                     Spacer()
                                     Text(
                                         "\(displayedPercent(for: window.remainingPercent))% "
-                                            + (connectivityManager.displayPercentUsed ? "used" : "left")
+                                            + (snapshotRequester.displayPercentUsed ? "used" : "left")
                                     )
                                         .font(.caption)
                                 }
@@ -67,7 +67,7 @@ struct ContentView: View {
     }
 
     private func displayedPercent(for remainingPercent: Double) -> Int {
-        let displayed = connectivityManager.displayPercentUsed
+        let displayed = snapshotRequester.displayPercentUsed
             ? 100 - remainingPercent
             : remainingPercent
         return Int(min(max(displayed, 0), 100).rounded())
