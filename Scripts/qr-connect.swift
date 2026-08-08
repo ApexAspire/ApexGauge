@@ -114,14 +114,21 @@ private func encode(_ payload: ConnectPayload) throws -> (data: Data, string: St
 }
 
 private func claudePayload() throws -> (payload: ConnectPayload, omittedAccessToken: Bool) {
-    let credentialsURL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent(".claude/.credentials.json", isDirectory: false)
-
+    // The Keychain item is the Claude Code CLI's live credential store on
+    // macOS (it is what CodexBar reads first); ~/.claude/.credentials.json
+    // can be months stale and hold a rotated-dead refresh token. Keychain
+    // first — note this may trigger a one-time keychain access prompt.
     let data: Data
     do {
-        data = try Data(contentsOf: credentialsURL)
-    } catch {
         data = try claudeCredentialsFromKeychain()
+    } catch {
+        let credentialsURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/.credentials.json", isDirectory: false)
+        do {
+            data = try Data(contentsOf: credentialsURL)
+        } catch {
+            throw ScriptError.message("Claude credentials were unavailable from both the Keychain and the credential file.")
+        }
     }
 
     let credentials: ClaudeCredentialFile
