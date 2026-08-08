@@ -75,4 +75,11 @@ public enum ApexGaugeDefaults {
 
     /// Minimum spacing between background refreshes (watchOS/iOS budgets).
     public static let backgroundRefreshInterval: TimeInterval = 15 * 60
+
+    /// WidgetKit complication identifiers (Phase 3).
+    public static let complicationKind = "ApexGaugeComplication"
+    public static let complicationBundleID = "com.apex.apexgauge.watchkitapp.complication"
+
+    /// Snapshots older than this render dimmed with an "as of" timestamp.
+    public static let staleAfter: TimeInterval = 45 * 60
 }
