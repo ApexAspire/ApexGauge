@@ -82,4 +82,12 @@ public enum ApexGaugeDefaults {
 
     /// Snapshots older than this render dimmed with an "as of" timestamp.
     public static let staleAfter: TimeInterval = 45 * 60
+
+    /// Display preference: "% used" (true, default) vs "% left" (false).
+    /// Written by the iOS app (UserDefaults.standard + pushed to the watch);
+    /// the watch app + complication read it from their App Group suite.
+    public static let displayPercentUsedKey = "DisplayPercentUsed"
+
+    /// WatchConnectivity payload key carrying the display preference (Bool).
+    public static let watchDisplayModePayloadKey = "displayPercentUsed"
 }
