@@ -12,9 +12,10 @@ reporting, no advertising identifiers. There is no Apex Gauge server.
 
 - **Provider credentials** (Claude OAuth tokens, Codex/ChatGPT OAuth tokens,
   Kimi API key) that you supply during setup. These are stored only in the
-  iOS Keychain with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`: they
-  never leave the device, are excluded from iCloud Keychain sync, and do not
-  migrate to a new device.
+  iOS Keychain with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. They
+  are never sent to Apex Aspire; the app sends them only to the relevant
+  provider over HTTPS when authenticating requests. They are excluded from
+  iCloud Keychain sync and do not migrate to a new device.
 - **Quota snapshots** (usage percentages and reset times), stored in the
   on-device App Group container shared with the Apple Watch companion app.
   Snapshots contain no credentials.
