@@ -6,7 +6,7 @@ import AppKit
 
 private let payloadType = "apexgauge-connect"
 private let maximumClaudePayloadBytes = 2_500
-private let deletionNotice = "QR deleted. The token grants API access until revoked — regenerate provider credentials if the image leaked."
+private let securityNotice = "QR closed. Nothing was written to disk. The token grants API access until revoked — regenerate provider credentials if the code was photographed or shared."
 
 private enum ScriptError: LocalizedError {
     case message(String)
@@ -64,39 +64,6 @@ private struct CodexCredentialFile: Decodable {
     }
 
     let tokens: Tokens
-}
-
-private final class TemporaryQR: @unchecked Sendable {
-    let directoryURL: URL
-    let pngURL: URL
-
-    private let lock = NSLock()
-    private var deleted = false
-
-    init(directoryURL: URL) {
-        self.directoryURL = directoryURL
-        self.pngURL = directoryURL.appendingPathComponent("connect.png", isDirectory: false)
-    }
-
-    func delete(printNotice: Bool) throws {
-        lock.lock()
-        guard !deleted else {
-            lock.unlock()
-            return
-        }
-
-        do {
-            try FileManager.default.removeItem(at: directoryURL)
-            deleted = true
-            lock.unlock()
-        } catch {
-            lock.unlock()
-            throw ScriptError.message("Could not delete the private QR directory at \(directoryURL.path).")
-        }
-        if printNotice {
-            print(deletionNotice)
-        }
-    }
 }
 
 private func usage() {
@@ -212,61 +179,34 @@ private func codexPayload() throws -> ConnectPayload {
         accountID: accountID)
 }
 
-private func makePrivateTemporaryDirectory() throws -> URL {
-    let templatePath = (NSTemporaryDirectory() as NSString)
-        .appendingPathComponent("apexgaugeqr-XXXXXX")
-    var template = Array(templatePath.utf8CString)
-    let createdPath: String? = template.withUnsafeMutableBufferPointer { buffer in
-        guard let pointer = mkdtemp(buffer.baseAddress) else { return nil }
-        return String(cString: pointer)
+private func renderQRCode(_ payload: String) throws -> CGImage {
+    guard let message = payload.data(using: .utf8),
+          let filter = CIFilter(name: "CIQRCodeGenerator")
+    else {
+        throw ScriptError.message("Could not initialize the QR generator.")
     }
-    guard let createdPath else {
-        throw ScriptError.message("Could not create a private temporary directory for the QR code.")
+    filter.setValue(message, forKey: "inputMessage")
+    filter.setValue("M", forKey: "inputCorrectionLevel")
+    guard let qrImage = filter.outputImage else {
+        throw ScriptError.message("Core Image did not produce a QR image.")
     }
-    return URL(fileURLWithPath: createdPath, isDirectory: true)
+
+    let moduleSide = max(qrImage.extent.width, qrImage.extent.height)
+    let scale = max(1, floor(280 / moduleSide))
+    let scaled = qrImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+    let extent = scaled.extent.integral
+    let whiteBackground = CIImage(color: .white).cropped(to: extent)
+    let composited = scaled.composited(over: whiteBackground)
+
+    let context = CIContext(options: [.useSoftwareRenderer: false])
+    guard let cgImage = context.createCGImage(composited, from: extent) else {
+        throw ScriptError.message("Could not rasterize the QR image.")
+    }
+    return cgImage
 }
 
-private func renderQRCode(_ payload: String) throws -> TemporaryQR {
-    let temporaryQR = TemporaryQR(directoryURL: try makePrivateTemporaryDirectory())
-    do {
-        guard let message = payload.data(using: .utf8),
-              let filter = CIFilter(name: "CIQRCodeGenerator")
-        else {
-            throw ScriptError.message("Could not initialize the QR generator.")
-        }
-        filter.setValue(message, forKey: "inputMessage")
-        filter.setValue("M", forKey: "inputCorrectionLevel")
-        guard let qrImage = filter.outputImage else {
-            throw ScriptError.message("Core Image did not produce a QR image.")
-        }
-
-        let moduleSide = max(qrImage.extent.width, qrImage.extent.height)
-        let scale = max(1, floor(512 / moduleSide))
-        let scaled = qrImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        let extent = scaled.extent.integral
-        let whiteBackground = CIImage(color: .white).cropped(to: extent)
-        let composited = scaled.composited(over: whiteBackground)
-
-        let context = CIContext(options: [.useSoftwareRenderer: false])
-        guard let cgImage = context.createCGImage(composited, from: extent) else {
-            throw ScriptError.message("Could not rasterize the QR image.")
-        }
-        let bitmap = NSBitmapImageRep(cgImage: cgImage)
-        guard let pngData = bitmap.representation(using: .png, properties: [:]) else {
-            throw ScriptError.message("Could not encode the QR image as PNG.")
-        }
-        try pngData.write(to: temporaryQR.pngURL, options: .atomic)
-        return temporaryQR
-    } catch {
-        try? temporaryQR.delete(printNotice: false)
-        throw error
-    }
-}
-
-private func decodeQRCode(at url: URL) throws -> String {
-    guard let image = CIImage(contentsOf: url) else {
-        throw ScriptError.message("Self-test could not read the generated PNG.")
-    }
+private func decodeQRCode(_ cgImage: CGImage) throws -> String {
+    let image = CIImage(cgImage: cgImage)
     let detector = CIDetector(
         ofType: CIDetectorTypeQRCode,
         context: CIContext(),
@@ -286,44 +226,152 @@ private func runSelfTest() throws {
         accessToken: "selftest-access-token",
         accessTokenExpiresAtMs: 1_890_000_000_000)
     let encoded = try encode(payload)
-    let temporaryQR = try renderQRCode(encoded.string)
+    let cgImage = try renderQRCode(encoded.string)
+    let decoded = try decodeQRCode(cgImage)
+    guard decoded == encoded.string,
+          let decodedData = decoded.data(using: .utf8),
+          let object = try JSONSerialization.jsonObject(with: decodedData) as? [String: Any],
+          Set(object.keys) == Set([
+              "type", "provider", "refreshToken", "accessToken", "accessTokenExpiresAtMs",
+          ]),
+          object["type"] as? String == payloadType,
+          object["provider"] as? String == "claude",
+          object["refreshToken"] as? String == "selftest-refresh-token",
+          object["accessToken"] as? String == "selftest-access-token",
+          object["accessTokenExpiresAtMs"] as? Int == 1_890_000_000_000
+    else {
+        throw ScriptError.message("Self-test payload did not round-trip with the exact connect keys.")
+    }
+    print("SELFTEST OK \(encoded.data.count) payload bytes")
+}
 
-    do {
-        let decoded = try decodeQRCode(at: temporaryQR.pngURL)
-        guard decoded == encoded.string,
-              let decodedData = decoded.data(using: .utf8),
-              let object = try JSONSerialization.jsonObject(with: decodedData) as? [String: Any],
-              Set(object.keys) == Set([
-                  "type", "provider", "refreshToken", "accessToken", "accessTokenExpiresAtMs",
-              ]),
-              object["type"] as? String == payloadType,
-              object["provider"] as? String == "claude",
-              object["refreshToken"] as? String == "selftest-refresh-token",
-              object["accessToken"] as? String == "selftest-access-token",
-              object["accessTokenExpiresAtMs"] as? Int == 1_890_000_000_000
-        else {
-            throw ScriptError.message("Self-test payload did not round-trip with the exact connect keys.")
+private final class QRWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+
+    override func performClose(_ sender: Any?) {
+        close()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 {
+            close()
+        } else {
+            super.keyDown(with: event)
         }
-        try temporaryQR.delete(printNotice: false)
-        print("SELFTEST OK \(encoded.data.count) payload bytes")
-    } catch {
-        try? temporaryQR.delete(printNotice: false)
-        throw error
     }
 }
 
-private func installSignalCleanup(for temporaryQR: TemporaryQR) -> [DispatchSourceSignal] {
+private final class QRDisplaySession: NSObject, NSWindowDelegate, @unchecked Sendable {
+    private let application: NSApplication
+    private var imageView: NSImageView?
+    private var window: NSWindow?
+    private var stopping = false
+
+    private(set) var exitCode: Int32 = 0
+
+    init(application: NSApplication, cgImage: CGImage) {
+        self.application = application
+        super.init()
+
+        let windowSide: CGFloat = 340
+        let imageSide: CGFloat = 280
+        let imageOrigin = (windowSide - imageSide) / 2
+        let contentView = NSView(frame: NSRect(x: 0, y: 0, width: windowSide, height: windowSide))
+        contentView.wantsLayer = true
+        contentView.layer?.backgroundColor = NSColor.white.cgColor
+
+        let imageView = NSImageView(frame: NSRect(
+            x: imageOrigin,
+            y: imageOrigin,
+            width: imageSide,
+            height: imageSide))
+        imageView.image = NSImage(
+            cgImage: cgImage,
+            size: NSSize(width: cgImage.width, height: cgImage.height))
+        imageView.imageAlignment = .alignCenter
+        imageView.imageScaling = .scaleNone
+        imageView.wantsLayer = true
+        imageView.layer?.magnificationFilter = .nearest
+        imageView.layer?.minificationFilter = .nearest
+        contentView.addSubview(imageView)
+        self.imageView = imageView
+
+        let closeButton = NSButton(frame: NSRect(x: windowSide - 30, y: windowSide - 30, width: 22, height: 22))
+        closeButton.title = "×"
+        closeButton.toolTip = "Close QR code"
+        closeButton.isBordered = false
+        closeButton.font = .systemFont(ofSize: 18, weight: .medium)
+        closeButton.contentTintColor = .secondaryLabelColor
+        closeButton.target = self
+        closeButton.action = #selector(closeRequested(_:))
+        contentView.addSubview(closeButton)
+
+        let window = QRWindow(
+            contentRect: contentView.bounds,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false)
+        window.title = "Apex Gauge — scan from iPhone"
+        window.contentView = contentView
+        window.backgroundColor = .white
+        window.isOpaque = true
+        window.hasShadow = true
+        window.isMovableByWindowBackground = true
+        window.level = .floating
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.delegate = self
+        window.center()
+        self.window = window
+    }
+
+    func show() {
+        window?.makeKeyAndOrderFront(nil)
+        application.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func closeRequested(_ sender: Any?) {
+        window?.close()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        stop(exitCode: 0)
+    }
+
+    func stop(exitCode: Int32) {
+        precondition(Thread.isMainThread)
+        guard !stopping else { return }
+        stopping = true
+        self.exitCode = exitCode
+
+        imageView?.image = nil
+        imageView = nil
+        window?.delegate = nil
+        window?.orderOut(nil)
+        window?.contentView = nil
+        window = nil
+
+        application.stop(nil)
+        application.postEvent(
+            NSEvent.otherEvent(
+                with: .applicationDefined,
+                location: .zero,
+                modifierFlags: [],
+                timestamp: 0,
+                windowNumber: 0,
+                context: nil,
+                subtype: 0,
+                data1: 0,
+                data2: 0)!,
+            atStart: false)
+    }
+}
+
+private func installSignalCleanup(for session: QRDisplaySession) -> [DispatchSourceSignal] {
     [SIGINT, SIGTERM, SIGHUP, SIGQUIT].map { signalNumber in
         signal(signalNumber, SIG_IGN)
-        let source = DispatchSource.makeSignalSource(signal: signalNumber, queue: .global())
+        let source = DispatchSource.makeSignalSource(signal: signalNumber, queue: .main)
         source.setEventHandler {
-            do {
-                try temporaryQR.delete(printNotice: true)
-                exit(128 + signalNumber)
-            } catch {
-                fputs("Error: \(error.localizedDescription)\n", stderr)
-                exit(1)
-            }
+            session.stop(exitCode: 128 + signalNumber)
         }
         source.resume()
         return source
@@ -345,24 +393,34 @@ private func runProvider(_ provider: String) throws {
     }
 
     let encoded = try encode(payload)
-    let temporaryQR = try renderQRCode(encoded.string)
-    let signalSources = installSignalCleanup(for: temporaryQR)
+    let cgImage = try renderQRCode(encoded.string)
 
     print("Provider: \(provider)")
     print("Payload bytes: \(encoded.data.count)")
     if omittedClaudeAccessToken {
         print("Claude access token omitted: payload would exceed \(maximumClaudePayloadBytes) bytes.")
     }
-    print("PNG path: \(temporaryQR.pngURL.path)")
+    print("Nothing is written to disk. Press Return in this terminal or close the QR window when finished.")
 
-    guard NSWorkspace.shared.open(temporaryQR.pngURL) else {
-        try temporaryQR.delete(printNotice: true)
-        throw ScriptError.message("Could not open the generated QR PNG.")
+    let application = NSApplication.shared
+    application.setActivationPolicy(.accessory)
+    let session = QRDisplaySession(application: application, cgImage: cgImage)
+    let signalSources = installSignalCleanup(for: session)
+    session.show()
+
+    DispatchQueue.global(qos: .userInitiated).async {
+        _ = readLine()
+        DispatchQueue.main.async {
+            session.stop(exitCode: 0)
+        }
     }
 
-    _ = readLine()
-    try temporaryQR.delete(printNotice: true)
+    application.run()
     signalSources.forEach { $0.cancel() }
+    print(securityNotice)
+    if session.exitCode != 0 {
+        exit(session.exitCode)
+    }
 }
 
 let arguments = Array(CommandLine.arguments.dropFirst())
