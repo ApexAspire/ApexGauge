@@ -22,10 +22,51 @@ Pre-implementation. Feasibility investigation complete; build plan approved: [`d
 
 - **iPhone companion app** owns all fetching and OAuth token refresh (single refresh owner — Codex refresh tokens rotate), persists a compact snapshot to the shared App Group, and pushes updates to the watch via WatchConnectivity.
 - **watchOS app + WidgetKit extension** renders the cached snapshot only — no networking on the watch. `accessoryRectangular` (primary, via `AccessoryWidgetGroup`) plus `accessoryCircular` fallbacks.
-- **Data sources** (same endpoints CodexBar uses; fetchers vendored from `CodexBarCore`):
-  - Claude: `GET api.anthropic.com/api/oauth/usage` (OAuth token pasted once from the Mac, phone-owned refresh)
+- **Data sources**:
+  - Claude — **Mac bridge (default)**: Claude Code reports 5-hour and weekly usage to its own status line; `Scripts/apexgauge-bridge.swift` captures it there and publishes to the app's iCloud container. No Claude credentials on the phone. See [Claude bridge](#claude-bridge).
+  - Claude — OAuth token (opt-in): `GET api.anthropic.com/api/oauth/usage`. Off by default and disclosed in-app; [Anthropic's Claude Code terms](https://code.claude.com/docs/en/legal-and-compliance) reserve subscription OAuth for Claude Code and Anthropic's own apps.
   - Codex: `GET chatgpt.com/backend-api/wham/usage` (OAuth tokens pasted once from `~/.codex/auth.json`)
   - Kimi: `GET api.kimi.com/coding/v1/usages` (official user API key from the Kimi Code Console)
+
+## Claude bridge
+
+The bridge is the default Claude path because it is the only one Anthropic's terms describe as intended: the numbers come from Claude Code itself rather than from an undocumented endpoint called with a subscription token.
+
+```sh
+./Scripts/build-apexgauge-bridge.sh
+./dist/apexgauge-bridge install     # status line entry + login item
+./dist/apexgauge-bridge status      # what is wired, and how fresh
+./dist/apexgauge-bridge uninstall   # restores any previous status line
+```
+
+`install` writes a `statusLine` entry into `~/.claude/settings.json` and loads a `WatchPaths` LaunchAgent that republishes on change — no resident process, nothing running while Claude Code is idle. **Any status line you already use is preserved and chained**, so its output still renders.
+
+Constraints worth knowing: figures update only while Claude Code is running, `rate_limits` is Pro/Max only and appears after the first API response of a session, and this path carries the 5-hour and weekly windows only. Both devices must be signed in to the same Apple ID with iCloud Drive enabled.
+
+### Fable and the two capture modes
+
+Claude Code's status line payload contains exactly two windows — verified against a live payload:
+
+```json
+"rate_limits": { "five_hour": { … }, "seven_day": { … } }
+```
+
+There are no model-scoped entries, so **Fable, Opus, and Sonnet windows cannot come from the status line**. They exist only on Anthropic's usage endpoint. The bridge therefore has two modes:
+
+```sh
+./dist/apexgauge-bridge fable off   # default — status line only, nothing contacts Anthropic
+./dist/apexgauge-bridge fable on    # additionally probes the usage endpoint for Fable
+./dist/apexgauge-bridge status      # shows which mode is active
+```
+
+`fable on` is opt-in and **unofficial**. It appears nowhere in Anthropic's documentation, and [Anthropic's Claude Code terms](https://code.claude.com/docs/en/legal-and-compliance) reserve subscription OAuth for Claude Code and Anthropic's own apps. Anthropic may treat it as third-party use and act on the account without notice. Use at your own risk.
+
+Two deliberate properties when it is enabled:
+
+- It reads the access token from the Keychain **without ever refreshing it**. Refreshing rotates the token and kills whichever copy loses the race — the reason Claude Code, CodexBar, and a phone can end up fighting over one credential lineage. An expired token simply skips the cycle.
+- It probes at most once every 15 minutes, from the publish path rather than the status line, so it never runs on the render hot path.
+
+The iPhone app needs no setting for this. It renders whatever windows the published file contains, so Fable appears when the probe is on and disappears when it is off.
 
 ## Requirements
 
