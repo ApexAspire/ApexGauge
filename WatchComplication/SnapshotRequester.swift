@@ -37,8 +37,11 @@ final class ComplicationSnapshotRequester: NSObject, WCSessionDelegate, @uncheck
 
         lock.lock()
         let shouldSend = hasPendingRequest && !isRequestInFlight && session.isReachable
-        hasPendingRequest = false
+        // Only consume the pending flag when the request is actually going out;
+        // clearing it unconditionally discarded requests made while the phone
+        // was briefly unreachable, with nothing left to retry.
         if shouldSend {
+            hasPendingRequest = false
             isRequestInFlight = true
         }
         lock.unlock()
@@ -104,6 +107,10 @@ final class ComplicationSnapshotRequester: NSObject, WCSessionDelegate, @uncheck
         error: (any Error)?
     ) {
         guard activationState == .activated, error == nil else { return }
+        sendPendingRequestIfPossible(using: session)
+    }
+
+    func sessionReachabilityDidChange(_ session: WCSession) {
         sendPendingRequestIfPossible(using: session)
     }
 

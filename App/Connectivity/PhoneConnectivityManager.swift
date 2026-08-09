@@ -11,8 +11,13 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
     /// quotas before returning the encoded snapshot, or nil when it cannot.
     var snapshotRequestHandler: (@Sendable () async -> Data?)?
 
+    /// Reads the last persisted snapshot without refreshing. Used when the
+    /// watch side suddenly becomes available and should be filled immediately.
+    var cachedSnapshotProvider: (@Sendable () async -> UsageSnapshot?)?
+
     private var session: WCSession?
     private let changeDetector: SnapshotChangeDetector?
+    private var lastAvailabilityPush: Date?
 
     init(changeDetector: SnapshotChangeDetector? = nil) {
         self.changeDetector = changeDetector
@@ -32,9 +37,11 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
     }
 
     /// Attempts a transfer and reports whether one was actually queued/sent.
-    /// Only requires an activated session: transfers queue for a paired watch
-    /// even when the watch app was side-installed (devicectl) and
-    /// isWatchAppInstalled reports false — gating on it silently drops data.
+    /// Deliberately gated on activation alone rather than isWatchAppInstalled:
+    /// that flag reads false for a devicectl side-install, and hard-gating on
+    /// it silently drops data. The transport itself still refuses when iOS has
+    /// no companion registration — updateApplicationContext then throws
+    /// WCError.watchAppNotInstalled, which is surfaced rather than swallowed.
     @discardableResult
     func push(_ snapshot: UsageSnapshot) -> Bool {
         let data: Data
@@ -79,11 +86,31 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
             return true
         } catch {
             if queuedComplicationTransfer {
-                lastPushDescription = "complication push; application context failed: \(error.localizedDescription)"
+                lastPushDescription = "complication push; application context failed: \(Self.describe(error))"
                 return true
             }
-            lastPushDescription = "Application context failed: \(error.localizedDescription)"
+            lastPushDescription = "Application context failed: \(Self.describe(error))"
             return false
+        }
+    }
+
+    /// WatchConnectivity's own descriptions name the fault but not the remedy.
+    /// The install/pairing codes are the ones a user can actually act on, so
+    /// they carry the step instead.
+    private static func describe(_ error: Error) -> String {
+        guard let code = (error as? WCError)?.code else {
+            return error.localizedDescription
+        }
+
+        switch code {
+        case .watchAppNotInstalled:
+            return "watch app not installed — iPhone Watch app → Apex Gauge → Install"
+        case .deviceNotPaired:
+            return "no paired Apple Watch"
+        case .sessionNotActivated, .sessionInactive:
+            return "WatchConnectivity session not active"
+        default:
+            return error.localizedDescription
         }
     }
 
@@ -128,7 +155,7 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
             ])
             lastPushDescription = "display mode application context"
         } catch {
-            lastPushDescription = "Display mode context failed: \(error.localizedDescription)"
+            lastPushDescription = "Display mode context failed: \(Self.describe(error))"
         }
     }
 
@@ -151,7 +178,7 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
             ])
             lastPushDescription = "complication preferences sent"
         } catch {
-            lastPushDescription = "Preference push failed: \(error.localizedDescription)"
+            lastPushDescription = "Preference push failed: \(Self.describe(error))"
         }
     }
 
@@ -166,6 +193,46 @@ final class PhoneConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
             } else if activationState == .activated {
                 self?.lastPushDescription = "WatchConnectivity activated"
             }
+        }
+    }
+
+    /// Fires when the watch app is installed or removed. Installing the watch
+    /// app is exactly the moment it has nothing to show, and until now the
+    /// first data arrived only on the next scheduled refresh — up to fifteen
+    /// minutes of "waiting for iPhone" on a working pair.
+    nonisolated func sessionWatchStateDidChange(_ session: WCSession) {
+        Task { @MainActor [weak self] in
+            await self?.pushCachedSnapshotForAvailabilityChange()
+        }
+    }
+
+    /// Reachability returning is the other moment a queued context can finally
+    /// land, so the same immediate fill applies.
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        Task { @MainActor [weak self] in
+            await self?.pushCachedSnapshotForAvailabilityChange()
+        }
+    }
+
+    /// Throttled: watch-state and reachability callbacks can arrive in bursts,
+    /// and each push spends from the complication transfer budget.
+    private func pushCachedSnapshotForAvailabilityChange() async {
+        if let lastAvailabilityPush,
+           Date().timeIntervalSince(lastAvailabilityPush) < 60
+        {
+            return
+        }
+
+        guard let cachedSnapshotProvider,
+              let snapshot = await cachedSnapshotProvider()
+        else {
+            return
+        }
+
+        // Bypasses the change detector on purpose: the watch has no copy at
+        // all, so "unchanged since last push" is the wrong question.
+        if self.push(snapshot) {
+            self.lastAvailabilityPush = Date()
         }
     }
 

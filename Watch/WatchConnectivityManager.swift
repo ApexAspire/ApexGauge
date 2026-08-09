@@ -106,10 +106,14 @@ final class SnapshotRequester: NSObject, ObservableObject {
         let session = WCSession.default
         guard session.activationState == .activated else { return }
 
-        hasPendingSnapshotRequest = false
+        // Stay pending while unreachable. Clearing the flag here used to drop
+        // the request permanently, so a watch that woke a moment before the
+        // phone became reachable waited for the next foreground or timeline
+        // cycle rather than for reachability itself.
         guard session.isReachable else {
             return
         }
+        hasPendingSnapshotRequest = false
         isSnapshotRequestInFlight = true
 
         session.sendMessage(
@@ -175,6 +179,14 @@ extension SnapshotRequester: WCSessionDelegate {
         error: (any Error)?
     ) {
         guard activationState == .activated, error == nil else { return }
+        Task { @MainActor [weak self] in
+            self?.sendPendingSnapshotRequestIfPossible()
+        }
+    }
+
+    /// The retry that makes a pending request meaningful: flush it the instant
+    /// the phone becomes reachable instead of waiting for the next cycle.
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         Task { @MainActor [weak self] in
             self?.sendPendingSnapshotRequestIfPossible()
         }

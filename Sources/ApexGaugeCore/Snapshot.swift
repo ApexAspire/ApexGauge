@@ -54,12 +54,34 @@ public struct ProviderSnapshot: Codable, Sendable, Equatable {
     /// Non-nil when the last refresh failed; the complication keeps showing the
     /// previous values (dimmed) and the iOS app surfaces this message.
     public var lastError: String?
+    /// When the numbers themselves were measured, where that differs from when
+    /// this app read them — currently only the Claude Mac bridge, whose figures
+    /// are as old as the last Claude Code status line render.
+    ///
+    /// `fetchedAt` deliberately tracks read time so the complication's
+    /// staleness check keeps driving a sane refresh cadence. Without this
+    /// second date, a refresh against an idle bridge would report "just now"
+    /// for hours-old data. Optional so older cached snapshots still decode.
+    public var capturedAt: Date?
 
-    public init(provider: Provider, windows: [QuotaWindow], fetchedAt: Date, lastError: String? = nil) {
+    public init(
+        provider: Provider,
+        windows: [QuotaWindow],
+        fetchedAt: Date,
+        lastError: String? = nil,
+        capturedAt: Date? = nil
+    ) {
         self.provider = provider
         self.windows = windows
         self.fetchedAt = fetchedAt
         self.lastError = lastError
+        self.capturedAt = capturedAt
+    }
+
+    /// How old the underlying measurement is, for surfaces that must not imply
+    /// a read is a measurement.
+    public var measurementAge: TimeInterval? {
+        capturedAt.map { Date().timeIntervalSince($0) }
     }
 }
 

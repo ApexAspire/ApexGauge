@@ -19,11 +19,14 @@ struct ApexGaugeApp: App {
             UsageViewModel.useMockDataKey: true,
             ApexGaugeDefaults.displayPercentUsedKey: true,
             UsageViewModel.displayResetCountdownKey: false,
+            ClaudeSource.preferenceKey: ClaudeSource.default.rawValue,
         ])
 
         let credentialStore = KeychainCredentialStore()
         self.credentialStore = credentialStore
-        let claudeFetcher = ClaudeUsageFetcher(store: credentialStore)
+        let claudeFetcher = ClaudeRoutingFetcher(
+            bridge: ClaudeBridgeFetcher(),
+            oauth: ClaudeUsageFetcher(store: credentialStore))
         let codexFetcher = CodexUsageFetcher(store: credentialStore)
         let kimiFetcher = KimiUsageFetcher(store: credentialStore)
         let liveFetchers: [any UsageFetching] = [claudeFetcher, codexFetcher, kimiFetcher]
@@ -59,7 +62,9 @@ struct ApexGaugeApp: App {
             }
             return try? JSONEncoder().encode(snapshot)
         }
+        connectivity.cachedSnapshotProvider = { await snapshotStore.load() }
         connectivity.activate()
+        ICloudContainerWarmUp.run()
 
         RefreshScheduler.register {
             _ = await performRefresh()

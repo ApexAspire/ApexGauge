@@ -116,11 +116,29 @@ final class UsageViewModel: ObservableObject {
         persistenceError = nil
         defer { isRefreshing = false }
 
+        // Pulling to refresh cannot pull from the Mac bridge the way it pulls
+        // from a provider: nudge it and give it a bounded moment to answer
+        // before reading, so refresh is not simply a re-read of the same file.
+        await nudgeClaudeBridgeIfNeeded()
+
         let engine = useMockData ? mockEngine : liveEngine
         let refreshedSnapshot = await engine.refreshAll()
 
         await persistAndPublish(refreshedSnapshot, pushToWatch: !useMockData)
         providerStatusReport = await providerStatusFetcher.fetch()
+    }
+
+    /// No-op unless Claude is live on the bridge path; mock mode must not touch
+    /// iCloud, and the OAuth path fetches directly.
+    private func nudgeClaudeBridgeIfNeeded(provider: ProviderSnapshot.Provider? = nil) async {
+        guard !useMockData else { return }
+        guard provider == nil || provider == .claude else { return }
+        guard ClaudeSource.current() == .bridge else { return }
+
+        let previousCapture = snapshot?.providers
+            .first { $0.provider == .claude }?
+            .capturedAt
+        await ClaudeBridgeNudge.requestRefresh(laterThan: previousCapture)
     }
 
     func refresh(provider: ProviderSnapshot.Provider) async {
@@ -131,6 +149,8 @@ final class UsageViewModel: ObservableObject {
         persistenceError = nil
         let refreshesMockData = useMockData
         defer { refreshingProviderIDs.remove(providerID) }
+
+        await nudgeClaudeBridgeIfNeeded(provider: provider)
 
         let refreshedProvider: ProviderSnapshot
         if refreshesMockData {

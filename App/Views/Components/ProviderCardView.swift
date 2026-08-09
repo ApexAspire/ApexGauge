@@ -58,14 +58,40 @@ struct ProviderCardView: View {
         }
     }
 
+    /// Measurements older than one five-hour window mean the source has gone
+    /// quiet, not that usage is flat — worth flagging rather than blending in.
+    private static let staleMeasurementThreshold: TimeInterval = 5 * 60 * 60
+
+    private var isMeasurementStale: Bool {
+        (snapshot.measurementAge ?? 0) > Self.staleMeasurementThreshold
+    }
+
+    /// Reports when the numbers were *measured* wherever that differs from when
+    /// they were read. Showing read time alone would make every pull-to-refresh
+    /// look successful even against a bridge that has not updated in hours.
+    private var freshnessLabel: String {
+        guard let age = snapshot.measurementAge else {
+            return "Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))"
+        }
+
+        let minutes = Int(age / 60)
+        if minutes < 1 { return "Measured just now" }
+        if minutes < 60 { return "Measured \(minutes)m ago" }
+
+        let hours = Int(age / 3600)
+        return hours < 24 ? "Measured \(hours)h ago" : "Measured \(hours / 24)d ago"
+    }
+
     private var header: some View {
         HStack(alignment: .center, spacing: ApexTheme.Spacing.small) {
             providerTitle
 
             if !dynamicTypeSize.isAccessibilitySize {
-                Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
+                Text(freshnessLabel)
                     .font(ApexTheme.Typography.dataCaption)
-                    .foregroundStyle(ApexTheme.Colors.inkSecondary)
+                    .foregroundStyle(
+                        isMeasurementStale ? ApexTheme.Colors.warning : ApexTheme.Colors.inkSecondary
+                    )
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
