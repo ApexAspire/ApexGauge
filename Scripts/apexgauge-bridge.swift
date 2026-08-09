@@ -225,7 +225,8 @@ private func runStatusline() {
     // bridge that printed nothing would cost the user that row for no benefit.
     // With nothing to chain to, render the quota we just captured.
     guard let chained = config?.chainedCommand, !chained.isEmpty else {
-        print(defaultStatusLine())
+        let root = try? JSONSerialization.jsonObject(with: input) as? [String: Any]
+        print(defaultStatusLine(context: contextSegment(from: root ?? [:])))
         return
     }
     chainTo(chained, input: input)
@@ -255,11 +256,49 @@ private func compactDuration(_ interval: TimeInterval) -> String {
     return "\(minutes)m"
 }
 
-private func defaultStatusLine() -> String {
+/// "Context 584k/1M (58%)".
+///
+/// Session context is deliberately NOT published to the phone: it describes one
+/// Claude Code session, not the account quota the app exists to show. It is
+/// rendered here only, straight from the live payload.
+///
+/// `context_window_size` is present in the real payload though absent from the
+/// documented schema, so the total is read rather than derived from the
+/// percentage — but everything is treated as optional and the segment is
+/// dropped entirely when any part is missing.
+private func contextSegment(from root: [String: Any]) -> String? {
+    guard let window = root["context_window"] as? [String: Any],
+          let used = window["total_input_tokens"] as? Double,
+          let size = window["context_window_size"] as? Double,
+          size > 0
+    else {
+        return nil
+    }
+
+    // Prefer the reported percentage; fall back to computing it.
+    let percent = (window["used_percentage"] as? Double) ?? (used / size * 100)
+    return "Context \(compactTokens(used))/\(compactTokens(size)) (\(Int(percent.rounded()))%)"
+}
+
+private func compactTokens(_ value: Double) -> String {
+    if value >= 1_000_000 {
+        let millions = value / 1_000_000
+        // 1M rather than 1.0M; 1.5M keeps the fraction.
+        return millions == millions.rounded()
+            ? "\(Int(millions))M"
+            : String(format: "%.1fM", millions)
+    }
+    if value >= 1_000 { return "\(Int((value / 1_000).rounded()))k" }
+    return "\(Int(value))"
+}
+
+private func defaultStatusLine(context: String? = nil) -> String {
     guard let data = try? Data(contentsOf: Paths.capture),
           let snapshot = try? makeDecoder().decode(BridgeSnapshot.self, from: data)
     else {
-        return "apexgauge: waiting for usage"
+        // Context still renders before any quota has been captured — it comes
+        // from the live payload, not the capture file.
+        return context ?? "apexgauge: waiting for usage"
     }
 
     var parts: [String] = []
@@ -276,6 +315,7 @@ private func defaultStatusLine() -> String {
     if let fable = currentFableWindow(config: config, allowNetwork: false) {
         parts.append(statusSegment("Fable", fable))
     }
+    if let context { parts.append(context) }
     return parts.isEmpty ? "apexgauge: waiting for usage" : parts.joined(separator: " · ")
 }
 
