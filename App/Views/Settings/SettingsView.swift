@@ -6,6 +6,12 @@ struct SettingsView: View {
     @EnvironmentObject private var connectivity: PhoneConnectivityManager
     let credentialStore: KeychainCredentialStore
 
+    private var liveDataDescription: String {
+        ClaudeSource.current() == .bridge
+            ? "Fetches current quotas using credentials stored on this iPhone. Claude comes from the Mac bridge instead, so no Claude credential is stored here."
+            : "Fetches current quotas using credentials stored on this iPhone."
+    }
+
     var body: some View {
         List {
             Section("Quota display") {
@@ -36,10 +42,13 @@ struct SettingsView: View {
                     )
                 )
 
+                // Claude on the default bridge path stores no credential here,
+                // so a blanket "using credentials stored on this iPhone" is
+                // wrong — and contradicts what the App Store review notes say.
                 Text(
                     viewModel.useMockData
                         ? "Shows representative quotas without contacting providers."
-                        : "Fetches current quotas using credentials stored on this iPhone."
+                        : liveDataDescription
                 )
                 .font(ApexTheme.Typography.caption)
                 .foregroundStyle(ApexTheme.Colors.inkSecondary)

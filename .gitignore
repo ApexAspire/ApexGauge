@@ -32,6 +32,9 @@ dist/
 docs/app-store/submission-guide.md
 docs/app-store/metadata.md
 docs/app-store/review-notes.md
+# Screenshots carry real usage figures and device context (time, battery,
+# location complications), so they stay local like the rest of the pack.
+docs/app-store/screenshots/
 
 # Local agent session knowledge (may reference internal workflows)
 .project-log.md
