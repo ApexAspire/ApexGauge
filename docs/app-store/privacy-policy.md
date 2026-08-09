@@ -16,9 +16,18 @@ reporting, no advertising identifiers. There is no Apex Gauge server.
   are never sent to Apex Aspire; the app sends them only to the relevant
   provider over HTTPS when authenticating requests. They are excluded from
   iCloud Keychain sync and do not migrate to a new device.
+  On the default Claude path no Claude credential is supplied at all — see
+  below.
 - **Quota snapshots** (usage percentages and reset times), stored in the
   on-device App Group container shared with the Apple Watch companion app.
   Snapshots contain no credentials.
+- **Claude usage figures received through your own iCloud account.** On the
+  default Claude path, a helper you run on your own Mac reads the usage
+  figures Claude Code already displays there and places them in this app's
+  private iCloud container in *your* iCloud account. The app reads that file.
+  The data is usage percentages and reset times only — no credentials — and it
+  travels between your own devices through Apple's iCloud. It is not sent to
+  Apex Aspire, and we cannot read it.
 
 ## What leaves the device
 

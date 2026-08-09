@@ -54,17 +54,20 @@ Claude Code's status line payload contains exactly two windows — verified agai
 There are no model-scoped entries, so **Fable, Opus, and Sonnet windows cannot come from the status line**. They exist only on Anthropic's usage endpoint. The bridge therefore has two modes:
 
 ```sh
-./dist/apexgauge-bridge fable off   # default — status line only, nothing contacts Anthropic
-./dist/apexgauge-bridge fable on    # additionally probes the usage endpoint for Fable
-./dist/apexgauge-bridge status      # shows which mode is active
+./dist/apexgauge-bridge fable off       # default — status line only, nothing contacts Anthropic
+./dist/apexgauge-bridge fable codexbar  # read Fable from CodexBar, no extra Anthropic requests
+./dist/apexgauge-bridge fable oauth     # probe Anthropic's usage endpoint directly
+./dist/apexgauge-bridge status          # shows which mode is active
 ```
 
-`fable on` is opt-in and **unofficial**. It appears nowhere in Anthropic's documentation, and [Anthropic's Claude Code terms](https://code.claude.com/docs/en/legal-and-compliance) reserve subscription OAuth for Claude Code and Anthropic's own apps. Anthropic may treat it as third-party use and act on the account without notice. Use at your own risk.
+**`codexbar`** reads a figure [CodexBar](https://github.com/steipete/CodexBar) has already fetched for its own menu bar, so it adds no requests to Anthropic at all. It needs CodexBar running, built from a revision that writes `extraWindows` and the Application Support mirror. Note that reading CodexBar's *group container* directly is not viable: `~/Library/Group Containers/**` is TCC-protected, and a helper respawned by launchd on every render re-prompts indefinitely because TCC has no stable responsible application to record consent against. Hence the mirror.
 
-Two deliberate properties when it is enabled:
+**`oauth`** is opt-in and **unofficial**. It appears nowhere in Anthropic's documentation, and [Anthropic's Claude Code terms](https://code.claude.com/docs/en/legal-and-compliance) reserve subscription OAuth for Claude Code and Anthropic's own apps. Anthropic may treat it as third-party use and act on the account without notice. Use at your own risk. Two deliberate properties:
 
 - It reads the access token from the Keychain **without ever refreshing it**. Refreshing rotates the token and kills whichever copy loses the race — the reason Claude Code, CodexBar, and a phone can end up fighting over one credential lineage. An expired token simply skips the cycle.
 - It probes at most once every 15 minutes, from the publish path rather than the status line, so it never runs on the render hot path.
+
+With either source enabled the status line shows Fable alongside the other windows (`5h 25% · 7d 84% · F 77%`), and the published snapshot carries a `fable` window the iPhone renders as a third Claude row.
 
 The iPhone app needs no setting for this. It renders whatever windows the published file contains, so Fable appears when the probe is on and disappears when it is off.
 

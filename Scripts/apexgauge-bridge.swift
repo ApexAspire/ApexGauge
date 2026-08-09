@@ -55,6 +55,15 @@ private enum Paths {
         ubiquityDocuments.appendingPathComponent(snapshotFilename, isDirectory: false)
     }
 
+    /// Local mirror of whatever was last written to the container.
+    ///
+    /// The unchanged-check must never read the published file back: iCloud can
+    /// evict it, and `Data(contentsOf:)` on a dematerialised file blocks until
+    /// the download completes — which hangs the LaunchAgent indefinitely.
+    static var lastPublished: URL {
+        supportDirectory.appendingPathComponent("last-published.json", isDirectory: false)
+    }
+
     static var fableCache: URL {
         supportDirectory.appendingPathComponent("fable-cache.json", isDirectory: false)
     }
@@ -103,8 +112,28 @@ private struct BridgeConfig: Codable {
     /// executed on every render so an existing statusline keeps working.
     var chainedCommand: String?
     var installedAt: Date
-    /// Optional so configs written before the probe existed still decode.
+    /// Legacy boolean form, kept so configs written before `fableSource`
+    /// existed still decode and keep working.
     var fableViaOAuth: Bool?
+    /// "off" | "codexbar" | "oauth". See FableSource.
+    var fableSource: String?
+
+    var resolvedFableSource: FableSource {
+        if let raw = fableSource, let parsed = FableSource(rawValue: raw) { return parsed }
+        return fableViaOAuth == true ? .oauth : .off
+    }
+}
+
+/// Where the Fable window comes from, when it is wanted at all.
+///
+/// Claude Code's status line carries only five_hour and seven_day, so any Fable
+/// figure originates from Anthropic's usage endpoint. The question is who calls
+/// it: `codexbar` reads a number CodexBar already fetched for its own menu bar,
+/// adding no request; `oauth` makes the call itself.
+enum FableSource: String {
+    case off
+    case codexbar
+    case oauth
 }
 
 /// Cached result of the OAuth probe, so `publish` — which launchd runs on every
@@ -181,10 +210,13 @@ private func runStatusline() {
                 fiveHour: fiveHour,
                 sevenDay: sevenDay)
             if let data = try? makeEncoder().encode(snapshot) {
+                // Capture only. Publishing is deliberately left to `publish`,
+                // which is the sole writer of the container file: this path has
+                // no Fable window to merge, so writing from here raced the
+                // agent and overwrote complete payloads with partial ones.
+                // The LaunchAgent watches this file, so the publish follows
+                // within seconds.
                 try? writeAtomically(data, to: Paths.capture)
-                // Fast path. The LaunchAgent re-publishes if this fails because
-                // iCloud was not ready yet.
-                try? writeAtomically(data, to: Paths.published)
             }
         }
     }
@@ -212,6 +244,13 @@ private func defaultStatusLine() -> String {
     }
     if let seven = snapshot.sevenDay {
         parts.append("7d \(Int(seven.usedPercent.rounded()))%")
+    }
+    // The capture file has no Fable window — publish merges that — so resolve
+    // it here from the configured source. With the CodexBar mirror that is a
+    // local file read; with `off` it costs nothing and shows nothing.
+    let config = try? makeDecoder().decode(BridgeConfig.self, from: Data(contentsOf: Paths.config))
+    if let fable = currentFableWindow(config: config, allowNetwork: false) {
+        parts.append("F \(Int(fable.usedPercent.rounded()))%")
     }
     return parts.isEmpty ? "apexgauge: waiting for usage" : parts.joined(separator: " · ")
 }
@@ -325,12 +364,124 @@ private func fetchFableWindow(token: String) -> BridgeSnapshot.Window? {
     return nil
 }
 
-/// Returns the Fable window when the probe is enabled, refreshing it at most
-/// once per interval. Returns nil — and publishes no Fable row — when disabled.
-private func currentFableWindow(config: BridgeConfig?) -> BridgeSnapshot.Window? {
-    guard config?.fableViaOAuth == true else { return nil }
+// MARK: Fable via CodexBar
 
-    let cache = try? makeDecoder().decode(FableCache.self, from: Data(contentsOf: Paths.fableCache))
+/// CodexBar publishes its menu-bar data to a group container. Reading the Fable
+/// window from there costs zero extra requests to Anthropic, because CodexBar
+/// has already made the call for its own UI.
+///
+/// Requires CodexBar built from a revision that publishes `extraWindows`
+/// (ApexAspire/CodexBar 615b30e3 or later) — earlier builds emit only the fixed
+/// primary/secondary/tertiary slots and this returns nil.
+/// Preferred source: CodexBar's plain-file mirror in Application Support.
+/// Unlike the group containers below it is not TCC-protected, so reading it
+/// raises no "access data from other apps" prompt. Requires CodexBar built with
+/// WidgetSnapshotStore.readableMirrorURL support.
+private let codexBarMirrorPath = "Library/Application Support/CodexBar/widget-snapshot.json"
+
+/// Fallback group containers. Reading these WILL prompt, and a launchd-spawned
+/// helper cannot hold that consent, so they are tried only if the mirror is
+/// missing — which means an older CodexBar build.
+private let codexBarContainers = [
+    "Y5PE65HELJ.com.steipete.codexbar",
+    "group.com.steipete.codexbar",
+]
+
+/// CodexBar only writes while it is running; beyond this its file describes a
+/// past state and is worse than showing nothing.
+private let codexBarFreshnessLimit: TimeInterval = 6 * 60 * 60
+
+private func fableWindowFromCodexBar() -> BridgeSnapshot.Window? {
+    let home = FileManager.default.homeDirectoryForCurrentUser
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+    func parseDate(_ raw: String?) -> Date? {
+        guard let raw else { return nil }
+        if let date = formatter.date(from: raw) { return date }
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: raw)
+    }
+
+    // Both container paths have existed; prefer whichever holds the newest
+    // snapshot rather than assuming one.
+    var best: (generatedAt: Date, window: BridgeSnapshot.Window)?
+
+    // Mirror first. Only fall back to the prompting paths when it is absent.
+    var candidatePaths = [home.appendingPathComponent(codexBarMirrorPath, isDirectory: false)]
+    if !FileManager.default.fileExists(atPath: candidatePaths[0].path) {
+        candidatePaths += codexBarContainers.map { container in
+            home
+                .appendingPathComponent("Library/Group Containers", isDirectory: true)
+                .appendingPathComponent(container, isDirectory: true)
+                .appendingPathComponent("widget-snapshot.json", isDirectory: false)
+        }
+    }
+
+    for path in candidatePaths {
+        guard let data = try? Data(contentsOf: path),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let entries = root["entries"] as? [[String: Any]]
+        else {
+            continue
+        }
+
+        let generatedAt = parseDate(root["generatedAt"] as? String) ?? .distantPast
+        guard Date().timeIntervalSince(generatedAt) < codexBarFreshnessLimit else { continue }
+
+        for entry in entries {
+            guard (entry["provider"] as? String)?.lowercased() == "claude",
+                  let extras = entry["extraWindows"] as? [[String: Any]]
+            else {
+                continue
+            }
+
+            for extra in extras {
+                guard (extra["id"] as? String) == "claude-fable",
+                      (extra["usageKnown"] as? Bool) != false,
+                      let window = extra["window"] as? [String: Any],
+                      let used = window["usedPercent"] as? Double
+                else {
+                    continue
+                }
+
+                let candidate = BridgeSnapshot.Window(
+                    usedPercent: used,
+                    resetsAt: parseDate(window["resetsAt"] as? String))
+                if best == nil || generatedAt > best!.generatedAt {
+                    best = (generatedAt, candidate)
+                }
+            }
+        }
+    }
+
+    return best?.window
+}
+
+/// Returns the Fable window for the configured source, refreshing at most once
+/// per interval. Returns nil — and publishes no Fable row — when off.
+/// `allowNetwork: false` restricts this to purely local reads — required on the
+/// status line path, which runs on every render and must never block on HTTP.
+private func currentFableWindow(
+    config: BridgeConfig?,
+    allowNetwork: Bool = true
+) -> BridgeSnapshot.Window? {
+    let source = config?.resolvedFableSource ?? .off
+    switch source {
+    case .off:
+        return nil
+    case .codexbar:
+        // Reading a local file costs nothing, so no cache or throttle needed.
+        return fableWindowFromCodexBar()
+    case .oauth:
+        break
+    }
+
+    let cached = try? makeDecoder().decode(FableCache.self, from: Data(contentsOf: Paths.fableCache))
+    guard allowNetwork else { return cached?.window }
+
+    let cache = cached
     if let cache, Date().timeIntervalSince(cache.fetchedAt) < fableProbeInterval {
         return cache.window
     }
@@ -371,14 +522,17 @@ private func runPublish() {
 
     // Skip an identical rewrite. The LaunchAgent watches the container
     // directory, and our own publish writes into it — without this guard each
-    // publish would retrigger the agent indefinitely.
-    if let existing = try? Data(contentsOf: Paths.published), existing == data {
+    // publish would retrigger the agent indefinitely. Compared against the
+    // local mirror, never the published file itself, so an evicted iCloud copy
+    // cannot block the agent.
+    if let previous = try? Data(contentsOf: Paths.lastPublished), previous == data {
         print("unchanged; nothing to publish")
         return
     }
 
     do {
         try writeAtomically(data, to: Paths.published)
+        try? writeAtomically(data, to: Paths.lastPublished)
         print("published \(Paths.published.path)")
     } catch {
         FileHandle.standardError.write(Data("apexgauge-bridge: publish failed: \(error.localizedDescription)\n".utf8))
@@ -526,22 +680,38 @@ private func runUninstall() throws {
 }
 
 private func runFableToggle(_ argument: String?) throws {
-    guard let argument, ["on", "off"].contains(argument) else {
-        throw BridgeError.message("Usage: apexgauge-bridge fable <on|off>")
+    // "on" kept as an alias for the original boolean toggle.
+    let normalized = argument == "on" ? "oauth" : (argument ?? "")
+    guard let source = FableSource(rawValue: normalized) else {
+        throw BridgeError.message("Usage: apexgauge-bridge fable <off|codexbar|oauth>")
     }
 
     guard var config = try? makeDecoder().decode(BridgeConfig.self, from: Data(contentsOf: Paths.config)) else {
         throw BridgeError.message("Bridge is not installed yet — run: apexgauge-bridge install")
     }
 
-    let enable = argument == "on"
-    config.fableViaOAuth = enable
+    config.fableSource = source.rawValue
+    config.fableViaOAuth = source == .oauth
     try writeAtomically(makeEncoder().encode(config), to: Paths.config)
     try? FileManager.default.removeItem(at: Paths.fableCache)
 
-    if enable {
+    switch source {
+    case .off:
+        print("Fable off. Nothing contacts Anthropic; only Claude Code's status line is read.")
+    case .codexbar:
+        let available = fableWindowFromCodexBar() != nil
         print("""
-        Fable probe ENABLED.
+        Fable source: CodexBar. No extra requests are made to Anthropic — the
+        figure is read from the snapshot CodexBar already writes for its own
+        menu bar.
+
+        Requires CodexBar running, built from a revision that publishes
+        extraWindows (ApexAspire/CodexBar 615b30e3 or later).
+        Currently readable: \(available ? "YES" : "NO — run CodexBar, or rebuild it from that revision")
+        """)
+    case .oauth:
+        print("""
+        Fable source: direct OAuth probe.
 
         This calls Anthropic's undocumented usage endpoint with the token Claude
         Code already holds, at most once every \(Int(fableProbeInterval / 60)) minutes. It reads the
@@ -553,8 +723,6 @@ private func runFableToggle(_ argument: String?) throws {
         its own apps and may act on the account without notice. Use at your own
         risk; turn it off with: apexgauge-bridge fable off
         """)
-    } else {
-        print("Fable probe disabled. Nothing contacts Anthropic; only Claude Code's status line is read.")
     }
 }
 
@@ -566,8 +734,16 @@ private func runStatus() {
     if let config = try? makeDecoder().decode(BridgeConfig.self, from: Data(contentsOf: Paths.config)) {
         print("installed at     \(formatter.string(from: config.installedAt))")
         print("chained command  \(config.chainedCommand ?? "(none)")")
-        let fableOn = config.fableViaOAuth == true
-        print("fable probe      \(fableOn ? "ON — calls Anthropic (unofficial, at own risk)" : "off — status line only")")
+        switch config.resolvedFableSource {
+        case .off:
+            print("fable source     off — status line only")
+        case .codexbar:
+            let live = fableWindowFromCodexBar()
+            print("fable source     codexbar — no extra Anthropic requests"
+                + " (\(live != nil ? "readable now" : "NOT readable — is CodexBar running and rebuilt?")))")
+        case .oauth:
+            print("fable source     oauth — calls Anthropic (unofficial, at own risk)")
+        }
     } else {
         print("installed        no (run: apexgauge-bridge install)")
     }
@@ -611,7 +787,7 @@ private func main() {
         case "fable": try runFableToggle(CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : nil)
         default:
             FileHandle.standardError.write(Data(
-                "Usage: apexgauge-bridge <statusline|publish|install|uninstall|status|fable on|off>\n".utf8))
+                "Usage: apexgauge-bridge <statusline|publish|install|uninstall|status|fable off|codexbar|oauth>\n".utf8))
             exit(64)
         }
     } catch {

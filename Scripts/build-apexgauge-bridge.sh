@@ -42,7 +42,37 @@ lipo -create \
     "${BUILD_DIR}/apexgauge-bridge-x86_64" \
     -output "${OUTPUT}"
 chmod +x "${OUTPUT}"
-codesign --force --sign - "${OUTPUT}"
+
+# Signing identity decides whether macOS remembers "Allow".
+#
+# Reading CodexBar's group container (fable source = codexbar) triggers the
+# "would like to access data from other apps" prompt. TCC records that consent
+# against the binary's designated requirement, so an ad-hoc signature — which
+# has no stable identity — loses consent on every rebuild and re-prompts
+# forever. A Developer ID or Apple Development identity keeps it.
+#
+# Override with APEXGAUGE_SIGN_IDENTITY; set it to "-" to force ad-hoc.
+if [[ -n "${APEXGAUGE_SIGN_IDENTITY:-}" ]]; then
+    SIGN_IDENTITY="${APEXGAUGE_SIGN_IDENTITY}"
+else
+    # `|| true` on each: grep exits non-zero when the identity class is absent,
+    # and under `set -euo pipefail` that aborts the whole build.
+    SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null \
+        | grep -o '"Developer ID Application:[^"]*"' | head -1 | tr -d '"' || true)
+    if [[ -z "${SIGN_IDENTITY}" ]]; then
+        SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null \
+            | grep -o '"Apple Development:[^"]*"' | head -1 | tr -d '"' || true)
+    fi
+    SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+fi
+
+if [[ "${SIGN_IDENTITY}" == "-" ]]; then
+    echo "Signing ad-hoc — macOS will re-prompt for cross-app access after every rebuild." >&2
+    codesign --force --sign - "${OUTPUT}"
+else
+    echo "Signing with: ${SIGN_IDENTITY}"
+    codesign --force --timestamp --options runtime --sign "${SIGN_IDENTITY}" "${OUTPUT}"
+fi
 
 echo "Built universal binary: ${OUTPUT}"
 shasum -a 256 "${OUTPUT}"
