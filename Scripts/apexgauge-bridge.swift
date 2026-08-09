@@ -231,6 +231,30 @@ private func runStatusline() {
     chainTo(chained, input: input)
 }
 
+/// "Session 25% (2h14m)". The reset time is omitted rather than guessed when
+/// the provider did not supply one, and a window already past its reset shows
+/// no countdown instead of a negative one.
+private func statusSegment(_ label: String, _ window: BridgeSnapshot.Window) -> String {
+    let percent = Int(window.usedPercent.rounded())
+    guard let resetsAt = window.resetsAt else { return "\(label) \(percent)%" }
+
+    let remaining = resetsAt.timeIntervalSince(Date())
+    guard remaining > 0 else { return "\(label) \(percent)%" }
+
+    return "\(label) \(percent)% (\(compactDuration(remaining)))"
+}
+
+private func compactDuration(_ interval: TimeInterval) -> String {
+    let totalMinutes = Int(interval / 60)
+    let days = totalMinutes / 1440
+    let hours = (totalMinutes % 1440) / 60
+    let minutes = totalMinutes % 60
+
+    if days > 0 { return hours > 0 ? "\(days)d\(hours)h" : "\(days)d" }
+    if hours > 0 { return minutes > 0 ? "\(hours)h\(minutes)m" : "\(hours)h" }
+    return "\(minutes)m"
+}
+
 private func defaultStatusLine() -> String {
     guard let data = try? Data(contentsOf: Paths.capture),
           let snapshot = try? makeDecoder().decode(BridgeSnapshot.self, from: data)
@@ -240,17 +264,17 @@ private func defaultStatusLine() -> String {
 
     var parts: [String] = []
     if let five = snapshot.fiveHour {
-        parts.append("5h \(Int(five.usedPercent.rounded()))%")
+        parts.append(statusSegment("Session", five))
     }
     if let seven = snapshot.sevenDay {
-        parts.append("7d \(Int(seven.usedPercent.rounded()))%")
+        parts.append(statusSegment("Week", seven))
     }
     // The capture file has no Fable window — publish merges that — so resolve
     // it here from the configured source. With the CodexBar mirror that is a
     // local file read; with `off` it costs nothing and shows nothing.
     let config = try? makeDecoder().decode(BridgeConfig.self, from: Data(contentsOf: Paths.config))
     if let fable = currentFableWindow(config: config, allowNetwork: false) {
-        parts.append("F \(Int(fable.usedPercent.rounded()))%")
+        parts.append(statusSegment("Fable", fable))
     }
     return parts.isEmpty ? "apexgauge: waiting for usage" : parts.joined(separator: " · ")
 }
