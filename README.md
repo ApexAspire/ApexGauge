@@ -12,7 +12,7 @@ Codex    S 30%   W 55%
 Kimi     W 12%
 ```
 
-S = 5-hour session window, W = weekly window, F = Claude's Fable model-scoped weekly window. Values shown are **remaining** quota, refreshed every ~15–30 minutes (watchOS complication budget — real-time is not possible).
+S = 5-hour session window, W = weekly window, F = Claude's Fable model-scoped weekly window. Values shown are **remaining** quota, refreshed every ~30 minutes (watchOS complication budget — real-time is not possible).
 
 ## Status
 

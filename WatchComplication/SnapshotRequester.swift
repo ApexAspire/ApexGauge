@@ -67,38 +67,22 @@ final class ComplicationSnapshotRequester: NSObject, WCSessionDelegate, @uncheck
     }
 
     private func receivePayload(_ payload: [String: Any]) {
-        if let data = payload[ApexGaugeDefaults.complicationWindowsKey] as? Data {
-            let defaults = UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)
-            defaults?.set(data, forKey: ApexGaugeDefaults.complicationWindowsKey)
-            WidgetCenter.shared.reloadAllTimelines()
-        }
-
-        if let data = payload[ApexGaugeDefaults.complicationHiddenProvidersKey] as? Data {
-            let defaults = UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)
-            defaults?.set(data, forKey: ApexGaugeDefaults.complicationHiddenProvidersKey)
-            WidgetCenter.shared.reloadAllTimelines()
-        }
-
-        if let displayPercentUsed = payload[ApexGaugeDefaults.watchDisplayModePayloadKey] as? Bool {
-            let defaults = UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)
-            defaults?.set(displayPercentUsed, forKey: ApexGaugeDefaults.displayPercentUsedKey)
-            WidgetCenter.shared.reloadAllTimelines()
-        }
-
-        guard let data = payload[ApexGaugeDefaults.watchSnapshotPayloadKey] as? Data,
-              (try? JSONDecoder().decode(UsageSnapshot.self, from: data)) != nil,
-              let containerURL = FileManager.default.containerURL(
-                  forSecurityApplicationGroupIdentifier: ApexGaugeDefaults.appGroupID
-              )
-        else {
-            return
-        }
-
-        let snapshotURL = containerURL.appendingPathComponent(ApexGaugeDefaults.snapshotFilename)
-        guard (try? data.write(to: snapshotURL, options: .atomic)) != nil else {
-            return
-        }
-        WidgetCenter.shared.reloadAllTimelines()
+        // One reload per payload (budget: ~4 complication tasks/hour); the
+        // decision logic lives in ApexGaugeCore so it is unit-tested.
+        let defaults = UserDefaults(suiteName: ApexGaugeDefaults.appGroupID)
+        ComplicationPayloadApplier.apply(
+            payload,
+            setData: { data, key in defaults?.set(data, forKey: key) },
+            setBool: { value, key in defaults?.set(value, forKey: key) },
+            writeSnapshot: { data in
+                guard let containerURL = FileManager.default.containerURL(
+                    forSecurityApplicationGroupIdentifier: ApexGaugeDefaults.appGroupID
+                ) else { return false }
+                let snapshotURL = containerURL.appendingPathComponent(ApexGaugeDefaults.snapshotFilename)
+                return (try? data.write(to: snapshotURL, options: .atomic)) != nil
+            },
+            reload: { WidgetCenter.shared.reloadAllTimelines() }
+        )
     }
 
     func session(

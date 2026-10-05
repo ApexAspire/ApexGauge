@@ -34,16 +34,18 @@ struct ComplicationEntry: TimelineEntry {
 }
 
 struct ComplicationTimelineProvider: TimelineProvider {
-    private let refreshInterval: TimeInterval = 15 * 60
+    // watchOS grants roughly 4 background complication tasks/hour at best;
+    // 30 minutes stays inside that. Primary reloads come from the phone push.
+    private let refreshInterval: TimeInterval = 30 * 60
 
     func placeholder(in context: Context) -> ComplicationEntry {
         ComplicationEntry(date: Date(), snapshot: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (ComplicationEntry) -> Void) {
-        let entry = entry(at: Date())
-        requestRefreshIfNeeded(for: entry.snapshot)
-        completion(entry)
+        // Cache-only: the timeline path already requests a refresh, and
+        // getSnapshot runs often (gallery, previews) so must not wake the phone.
+        completion(entry(at: Date()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ComplicationEntry>) -> Void) {
