@@ -20,7 +20,13 @@ struct ProviderCardView: View {
                 ProviderStatusBannerView(status: providerStatus)
             }
 
-            if snapshot.windows.isEmpty {
+            if let bridgeState = snapshot.bridgeState {
+                BridgeStateBannerView(state: bridgeState)
+            }
+
+            if snapshot.windows.isEmpty, snapshot.bridgeState != nil {
+                EmptyView()
+            } else if snapshot.windows.isEmpty {
                 Label("No quota data is available.", systemImage: "gauge.with.dots.needle.0percent")
                     .font(ApexTheme.Typography.compact)
                     .foregroundStyle(ApexTheme.Colors.inkSecondary)
@@ -86,7 +92,7 @@ struct ProviderCardView: View {
         HStack(alignment: .center, spacing: ApexTheme.Spacing.small) {
             providerTitle
 
-            if !dynamicTypeSize.isAccessibilitySize {
+            if !dynamicTypeSize.isAccessibilitySize, snapshot.capturedAt != nil || snapshot.bridgeState == nil {
                 Text(freshnessLabel)
                     .font(ApexTheme.Typography.dataCaption)
                     .foregroundStyle(
@@ -166,6 +172,33 @@ struct ProviderCardView: View {
             }
             return lhsOrder < rhsOrder
         }
+    }
+}
+
+/// Actionable explanation for a Claude bridge that is supplying no figures.
+/// Copy lives on `ClaudeBridgeState` so the dashboard, Settings and watch agree.
+private struct BridgeStateBannerView: View {
+    let state: ClaudeBridgeState
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: ApexTheme.Spacing.xSmall) {
+                Text(state.title)
+                    .font(ApexTheme.Typography.caption.weight(.semibold))
+                Text(state.detail)
+                    .font(ApexTheme.Typography.caption)
+            }
+        } icon: {
+            Image(systemName: state == .iCloudUnavailable ? "icloud.slash" : "desktopcomputer.trianglebadge.exclamationmark")
+        }
+        .foregroundStyle(ApexTheme.Colors.warning)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(ApexTheme.Spacing.medium)
+        .background(
+            ApexTheme.Colors.warningSoft,
+            in: RoundedRectangle(cornerRadius: ApexTheme.Radius.innerCard, style: .continuous)
+        )
+        .accessibilityElement(children: .combine)
     }
 }
 

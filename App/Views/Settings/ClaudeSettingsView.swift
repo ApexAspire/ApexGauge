@@ -167,24 +167,16 @@ struct ClaudeSettingsView: View {
     /// the Mac half was never installed, or Claude Code simply has not run.
     private func loadBridgeStatus() async {
         let status = await Task.detached(priority: .userInitiated) { () -> String in
-            guard let documents = ClaudeBridgeFetcher.defaultContainerURL() else {
-                return "iCloud unavailable"
+            // Same read the dashboard uses, so Settings and the card cannot disagree.
+            switch try? ClaudeBridgeFetcher().read() {
+            case let .unavailable(state):
+                return state.title
+            case let .available(snapshot):
+                let minutes = Int(Date().timeIntervalSince(snapshot.capturedAt) / 60)
+                return minutes < 1 ? "Receiving (just now)" : "Receiving (\(minutes)m ago)"
+            case nil:
+                return "Bridge file unreadable"
             }
-
-            let fileURL = documents.appendingPathComponent(
-                ClaudeBridgeFetcher.snapshotFilename, isDirectory: false)
-            try? FileManager.default.startDownloadingUbiquitousItem(at: fileURL)
-
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            guard let data = try? Data(contentsOf: fileURL),
-                  let snapshot = try? decoder.decode(ClaudeBridgeSnapshot.self, from: data)
-            else {
-                return "Waiting for the Mac bridge"
-            }
-
-            let minutes = Int(Date().timeIntervalSince(snapshot.capturedAt) / 60)
-            return minutes < 1 ? "Receiving (just now)" : "Receiving (\(minutes)m ago)"
         }.value
 
         bridgeStatus = status

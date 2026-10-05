@@ -63,19 +63,57 @@ public struct ProviderSnapshot: Codable, Sendable, Equatable {
     /// second date, a refresh against an idle bridge would report "just now"
     /// for hours-old data. Optional so older cached snapshots still decode.
     public var capturedAt: Date?
+    /// Why the Claude Mac bridge is supplying no figures, when it is not.
+    /// Nil for every other provider and for a healthy bridge. Optional and
+    /// additive, so snapshots from older builds decode (nil) and older
+    /// builds ignore it; `UsageSnapshot.version` is deliberately not bumped.
+    public var bridgeState: ClaudeBridgeState?
 
     public init(
         provider: Provider,
         windows: [QuotaWindow],
         fetchedAt: Date,
         lastError: String? = nil,
-        capturedAt: Date? = nil
+        capturedAt: Date? = nil,
+        bridgeState: ClaudeBridgeState? = nil
     ) {
         self.provider = provider
         self.windows = windows
         self.fetchedAt = fetchedAt
         self.lastError = lastError
         self.capturedAt = capturedAt
+        self.bridgeState = bridgeState
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case provider, windows, fetchedAt, lastError, capturedAt, bridgeState
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        provider = try c.decode(Provider.self, forKey: .provider)
+        windows = try c.decode([QuotaWindow].self, forKey: .windows)
+        fetchedAt = try c.decode(Date.self, forKey: .fetchedAt)
+        lastError = try c.decodeIfPresent(String.self, forKey: .lastError)
+        capturedAt = try c.decodeIfPresent(Date.self, forKey: .capturedAt)
+        // Lenient: a state added by a newer phone must degrade to "no state",
+        // never fail the whole snapshot on an older watch.
+        bridgeState = (try? c.decodeIfPresent(ClaudeBridgeState.self, forKey: .bridgeState)) ?? nil
+    }
+
+    /// Merge rule for a freshly read snapshot: when the bridge reports a state
+    /// and no windows, keep the previous windows (a transient iCloud blip must
+    /// not wipe the card), keeping their `fetchedAt` and `capturedAt` so age
+    /// stays honest, and attach the new state. Anything else is returned as-is,
+    /// so a later healthy read (nil state, windows) clears the state.
+    public func carryingForward(from previous: ProviderSnapshot?) -> ProviderSnapshot {
+        guard bridgeState != nil, windows.isEmpty,
+              let previous, previous.provider == provider, !previous.windows.isEmpty
+        else { return self }
+        var merged = previous
+        merged.bridgeState = bridgeState
+        merged.lastError = lastError
+        return merged
     }
 
     /// How old the underlying measurement is, for surfaces that must not imply

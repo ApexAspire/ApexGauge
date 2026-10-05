@@ -12,6 +12,13 @@ struct ContentView: View {
                         let provider = snapshot.providers[index]
 
                         Section {
+                            if let state = provider.bridgeState {
+                                // The phone is reachable; it is the Mac bridge that is
+                                // quiet. Distinct from "Waiting for iPhone" below.
+                                Label(state.watchText, systemImage: "desktopcomputer")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
                             ForEach(sortedWindows(provider.windows).indices, id: \.self) { windowIndex in
                                 WindowRow(
                                     window: sortedWindows(provider.windows)[windowIndex],

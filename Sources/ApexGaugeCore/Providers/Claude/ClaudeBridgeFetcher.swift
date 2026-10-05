@@ -42,6 +42,67 @@ public struct ClaudeBridgeSnapshot: Codable, Sendable, Equatable {
     }
 }
 
+/// Why the Mac bridge is not currently supplying Claude numbers.
+///
+/// Modelled explicitly so the UI never has to infer a cause from an absent
+/// file. Only causes the phone can actually tell apart are separate cases:
+///
+/// - The Mac helper writes no capture at all when Claude Code's status line
+///   carries no `rate_limits` (non Pro/Max plans, or before the first API
+///   response of a session). On the phone that is byte-for-byte the same as
+///   "helper never installed" and "Claude Code not run yet", so all three share
+///   `.noCapture` and its copy names every possibility instead of guessing.
+/// - A stale capture is not a state here: it is healthy data and stays a
+///   `capturedAt` matter.
+///
+/// Raw values are the wire format (carried inside `ProviderSnapshot`), so new
+/// cases must be additive; an unknown value decodes to nil on older builds.
+public enum ClaudeBridgeState: String, Codable, Sendable, Equatable, CaseIterable {
+    /// Signed out of iCloud, iCloud Drive off, or the container is not provisioned.
+    case iCloudUnavailable
+    /// The container is reachable but holds no snapshot file.
+    case noCapture
+    /// A snapshot file exists but carries neither window.
+    case noWindows
+
+    /// Short heading, matching the vocabulary of the Settings bridge row.
+    public var title: String {
+        switch self {
+        case .iCloudUnavailable: "iCloud unavailable"
+        case .noCapture: "Waiting for the Mac bridge"
+        case .noWindows: "Bridge has no usage figures"
+        }
+    }
+
+    /// Actionable one-or-two sentence explanation for the dashboard card.
+    public var detail: String {
+        switch self {
+        case .iCloudUnavailable:
+            "Sign in to iCloud and turn on iCloud Drive for Apex Gauge on this iPhone."
+        case .noCapture:
+            "Install the Mac bridge, then use Claude Code on a Pro or Max plan. Usage only appears after Claude Code's first reply in a session."
+        case .noWindows:
+            "Claude Code sent no usage figures. They appear only on Pro and Max plans, after the first reply in a session."
+        }
+    }
+
+    /// Terse text for the watch, which has no room for the dashboard copy.
+    public var watchText: String {
+        switch self {
+        case .iCloudUnavailable: "iPhone iCloud is off"
+        case .noCapture: "Bridge idle"
+        case .noWindows: "Bridge idle: no usage sent"
+        }
+    }
+}
+
+/// What one read of the bridge produced, before it is flattened into a
+/// `ProviderSnapshot`. Keeps "no data and why" distinct from "data".
+public enum ClaudeBridgeReading: Sendable, Equatable {
+    case available(ClaudeBridgeSnapshot)
+    case unavailable(ClaudeBridgeState)
+}
+
 /// Reads Claude subscription quota from the Mac bridge instead of calling
 /// Anthropic directly. Claude Code hands these numbers to its own statusline;
 /// the bridge captures them there and publishes through iCloud, so the phone
@@ -84,9 +145,12 @@ public struct ClaudeBridgeFetcher: UsageFetching {
             .appendingPathComponent("Documents", isDirectory: true)
     }
 
-    public func fetchUsage() async throws -> ProviderSnapshot {
+    /// Reads the bridge once and reports what it found. Throws only for a file
+    /// that exists but cannot be understood (decoding / newer version); every
+    /// "nothing to show" case is a `.unavailable` reading rather than an error.
+    public func read() throws -> ClaudeBridgeReading {
         guard let documents = self.locateContainer() else {
-            throw UsageFetchError.notConfigured
+            return .unavailable(.iCloudUnavailable)
         }
 
         let fileURL = documents.appendingPathComponent(Self.snapshotFilename, isDirectory: false)
@@ -99,7 +163,7 @@ public struct ClaudeBridgeFetcher: UsageFetching {
         do {
             data = try self.readData(fileURL)
         } catch {
-            throw UsageFetchError.notConfigured
+            return .unavailable(.noCapture)
         }
 
         let decoder = JSONDecoder()
@@ -114,6 +178,29 @@ public struct ClaudeBridgeFetcher: UsageFetching {
         guard snapshot.version <= ClaudeBridgeSnapshot.currentVersion else {
             throw UsageFetchError.decoding(
                 "Bridge snapshot v\(snapshot.version) is newer than this app understands.")
+        }
+
+        guard snapshot.fiveHour != nil || snapshot.sevenDay != nil || snapshot.fable != nil else {
+            return .unavailable(.noWindows)
+        }
+        return .available(snapshot)
+    }
+
+    public func fetchUsage() async throws -> ProviderSnapshot {
+        let snapshot: ClaudeBridgeSnapshot
+        switch try self.read() {
+        case let .unavailable(state):
+            // Not an error: the bridge state travels as data so every surface
+            // can say what to do, instead of "Not configured".
+            return ProviderSnapshot(
+                provider: .claude,
+                windows: [],
+                fetchedAt: self.now(),
+                lastError: nil,
+                capturedAt: nil,
+                bridgeState: state)
+        case let .available(value):
+            snapshot = value
         }
 
         var windows: [QuotaWindow] = []
@@ -134,10 +221,6 @@ public struct ClaudeBridgeFetcher: UsageFetching {
                 kind: .fable,
                 remainingPercent: ProviderSupport.remainingPercent(fromUsed: fable.usedPercent),
                 resetsAt: fable.resetsAt))
-        }
-
-        guard !windows.isEmpty else {
-            throw UsageFetchError.notConfigured
         }
 
         // fetchedAt is when the app read the bridge, not when the Mac captured:

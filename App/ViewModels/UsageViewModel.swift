@@ -122,7 +122,10 @@ final class UsageViewModel: ObservableObject {
         await nudgeClaudeBridgeIfNeeded()
 
         let engine = useMockData ? mockEngine : liveEngine
-        let refreshedSnapshot = await engine.refreshAll()
+        var refreshedSnapshot = await engine.refreshAll()
+        refreshedSnapshot.providers = refreshedSnapshot.providers.map { provider in
+            provider.carryingForward(from: snapshot?.providers.first { $0.provider == provider.provider })
+        }
 
         await persistAndPublish(refreshedSnapshot, pushToWatch: !useMockData)
         providerStatusReport = await providerStatusFetcher.fetch()
@@ -178,7 +181,8 @@ final class UsageViewModel: ObservableObject {
 
         var updatedSnapshot = snapshot ?? UsageSnapshot(providers: [])
         if let index = updatedSnapshot.providers.firstIndex(where: { $0.provider == provider }) {
-            updatedSnapshot.providers[index] = refreshedProvider
+            updatedSnapshot.providers[index] = refreshedProvider.carryingForward(
+                from: updatedSnapshot.providers[index])
         } else {
             updatedSnapshot.providers.append(refreshedProvider)
         }
