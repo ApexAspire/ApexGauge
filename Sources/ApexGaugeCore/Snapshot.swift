@@ -102,13 +102,16 @@ public struct ProviderSnapshot: Codable, Sendable, Equatable {
     }
 
     /// Merge rule for a freshly read snapshot: when the bridge reports a state
-    /// and no windows, keep the previous windows (a transient iCloud blip must
-    /// not wipe the card), keeping their `fetchedAt` and `capturedAt` so age
-    /// stays honest, and attach the new state. Anything else is returned as-is,
+    /// and no windows, keep previously measured bridge windows (a transient
+    /// iCloud blip must not wipe the card), keeping their `fetchedAt` and
+    /// `capturedAt` so age stays honest. Mock and OAuth windows have no
+    /// `capturedAt` and must not be presented as bridge measurements.
+    /// Anything else is returned as-is,
     /// so a later healthy read (nil state, windows) clears the state.
     public func carryingForward(from previous: ProviderSnapshot?) -> ProviderSnapshot {
         guard bridgeState != nil, windows.isEmpty,
-              let previous, previous.provider == provider, !previous.windows.isEmpty
+              let previous, previous.provider == provider,
+              !previous.windows.isEmpty, previous.capturedAt != nil
         else { return self }
         var merged = previous
         merged.bridgeState = bridgeState

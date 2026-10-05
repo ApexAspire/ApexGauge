@@ -56,6 +56,13 @@ final class SnapshotChangeDetector {
     ) -> Bool {
         guard let previous else { return true }
 
+        // The watch app renders bridge health directly. A state transition
+        // must reach it even when the last-known quota percentages are kept.
+        for provider in current.providers {
+            let oldState = previous.providers.first { $0.provider == provider.provider }?.bridgeState
+            if oldState != provider.bridgeState { return true }
+        }
+
         let previousWindows = windowsByProviderAndKind(in: previous)
         let currentWindows = windowsByProviderAndKind(in: current)
 

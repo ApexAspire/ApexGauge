@@ -41,9 +41,15 @@ struct ApexGaugeApp: App {
         // background and watch-triggered paths must honour it too.
         let performRefresh: @Sendable () async -> UsageSnapshot = {
             let useMock = UserDefaults.standard.bool(forKey: UsageViewModel.useMockDataKey)
-            let snapshot = useMock
+            let previousSnapshot = await snapshotStore.load()
+            var snapshot = useMock
                 ? await MockUsageEngine().refreshAll()
                 : await liveEngine.refreshAll()
+            snapshot.providers = snapshot.providers.map { provider in
+                provider.carryingForward(from: previousSnapshot?.providers.first {
+                    $0.provider == provider.provider
+                })
+            }
             try? await snapshotStore.save(snapshot)
             if !RefreshInvocation.isExplicitWatchRequest,
                changeDetector.shouldPush(snapshot),

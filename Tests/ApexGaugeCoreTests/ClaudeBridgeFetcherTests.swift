@@ -242,6 +242,13 @@ private func unavailable(_ state: ClaudeBridgeState) -> ProviderSnapshot {
     #expect(fresh.carryingForward(from: emptyPrior) == fresh)
 }
 
+@Test func mergeDoesNotCarryMockOrOAuthWindowsIntoBridgeState() {
+    var previous = withWindows()
+    previous.capturedAt = nil
+    let state = unavailable(.noCapture)
+    #expect(state.carryingForward(from: previous) == state)
+}
+
 @Test func mergeLaterHealthyReadClearsState() {
     var stale = withWindows()
     stale.bridgeState = .noCapture
